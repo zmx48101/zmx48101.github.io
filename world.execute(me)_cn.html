@@ -1,0 +1,1182 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="download_date" content="2026-02-24T03:48:40.326Z"/>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>world.execute(me);</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --main-bg: #0a0a0a;
+            --text-color: #00ff41;
+            --highlight-color: #f0f0f0;
+            --error-color: #ff3333;
+            --love-color: #ff69b4;
+            --bsod-bg: #0000aa;
+            --bsod-text: #ffffff;
+            --font-main: 'Share Tech Mono', monospace;
+            --font-display: 'VT323', monospace;
+        }
+
+        * { box-sizing: border-box; }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: var(--main-bg);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            overflow: hidden;
+            text-shadow: 0 0 5px var(--text-color), 0 0 10px var(--text-color);
+        }
+
+        #container {
+            position: relative;
+            width: 100%; height: 100%;
+            padding: 2vw;
+        }
+        
+        /* CRT Effects */
+        #container::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0;
+            bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 3px, 4px 100%;
+            pointer-events: none;
+            animation: scanline 8s linear infinite;
+        }
+        #container::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0;
+            bottom: 0; right: 0;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.8) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+        @keyframes scanline {
+            from { background-position: 0 0; }
+            to { background-position: 0 100%; }
+        }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--main-bg);
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column; cursor: pointer;
+            z-index: 100;
+            font-size: 2.5em; font-family: var(--font-display);
+            transition: opacity 1s;
+        }
+        #overlay.hidden { opacity: 0; pointer-events: none; }
+        #overlay-cursor { animation: blink 1s step-end infinite; }
+
+        #visuals {
+            position: relative; z-index: 10;
+            width: 100%; height: 100%;
+            font-size: 1.1rem;
+            overflow: hidden;
+        }
+
+        .line {
+            display: block; margin-bottom: 0.5em;
+            white-space: pre-wrap;
+        }
+        .line > .prompt { opacity: 0.6; }
+        .cursor {
+            display: inline-block; background-color: var(--text-color);
+            width: 0.6em; height: 1.2em; vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+
+        .emphasis {
+            font-family: var(--font-display);
+            font-size: 2.5em; color: var(--highlight-color);
+            text-shadow: 0 0 8px var(--highlight-color);
+            display: block; text-align: center;
+            letter-spacing: 5px; animation: fadeIn 0.5s;
+        }
+        .error {
+            color: var(--error-color); text-shadow: 0 0 8px var(--error-color);
+        }
+        .love {
+            color: var(--love-color); text-shadow: 0 0 8px var(--love-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Animations */
+        @keyframes blink { from, to { background-color: transparent; } 50% { background-color: var(--text-color); } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes screenShake { 0%{transform:translate(2px,1px) rotate(0deg)}10%{transform:translate(-1px,-2px) rotate(-.8deg)}20%{transform:translate(-3px,0) rotate(.8deg)}30%{transform:translate(3px,2px) rotate(0deg)}40%{transform:translate(1px,-1px) rotate(.8deg)}50%{transform:translate(-1px,2px) rotate(-.8deg)}60%{transform:translate(-3px,1px) rotate(0deg)}70%{transform:translate(3px,1px) rotate(-.8deg)}80%{transform:translate(-1px,-1px) rotate(.8deg)}90%{transform:translate(2px,2px) rotate(0deg)}100%{transform:translate(1px,-2px) rotate(-.8deg)} }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+        
+        .dizzy { animation: blurEffect 2s linear infinite; }
+        @keyframes blurEffect { 
+            0% { filter: blur(0); } 
+            50% { filter: blur(5px); } 
+            100% { filter: blur(0); } 
+        }
+
+        .ac-mode { --text-color: #ff4444; }
+        .dc-mode { --text-color: #4444ff; }
+        .blind { filter: blur(5px) brightness(0.3); }
+        .time-travel { animation: timeWarp 3s ease-in-out; }
+        @keyframes timeWarp { 0% { filter: hue-rotate(0deg); } 50% { filter: hue-rotate(180deg) sepia(1); } 100% { filter: hue-rotate(360deg); } }
+
+        /* Special Effects Elements */
+        #binary-canvas, #bsod-screen {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .code-snippet, .progress-bar-container {
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--text-color);
+            padding: 1em; margin: 1em 0;
+            white-space: pre; font-family: var(--font-main);
+        }
+        .progress-bar { height: 1.2em; background-color: var(--text-color); width: 0; transition: width 1s linear; }
+        .token.keyword { color: #cc7832; }
+        .token.class-name { color: #a9b7c6; }
+        .token.function { color: #ffc66d; }
+        .token.string { color: #6a8759; }
+
+        #bsod-screen {
+            background-color: var(--bsod-bg);
+            color: var(--bsod-text);
+            font-family: 'Lucida Console', monospace;
+            text-shadow: none;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 50;
+        }
+        .bsod-text { font-size: 1.2em; text-align: center; }
+        .bsod-dump { font-size: 0.8em; margin-top: 2em; }
+
+        .shape { position: absolute; }
+        .point, .sine-dot { width: 5px; height: 5px; background-color: var(--highlight-color); border-radius: 50%; box-shadow: 0 0 10px var(--highlight-color); }
+        .circle { border: 2px solid var(--highlight-color); border-radius: 50%; box-shadow: 0 0 15px var(--highlight-color); animation: fadeIn 1s; }
+        .tangent-line { border-top: 1px dashed var(--love-color); transform-origin: left center; }
+        .limit-line { border-top: 2px solid var(--error-color); }
+
+        .chaos-text {
+            position: absolute; font-family: var(--font-display);
+            opacity: 0.8; animation: fadeIn 0.2s;
+        }
+
+        /* New effect styles */
+        .emoji-display {
+            position: absolute;
+            font-size: 3em;
+            animation: bounceIn 0.8s ease-out;
+            z-index: 15;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(180deg); opacity: 0.8; }
+            100% { transform: scale(1) rotate(360deg); opacity: 1; }
+        }
+
+        .gender-symbol {
+            position: absolute;
+            font-size: 4em;
+            animation: genderSwitch 1s ease-in-out;
+            z-index: 15;
+        }
+        @keyframes genderSwitch {
+            0% { transform: rotateY(0deg); }
+            50% { transform: rotateY(90deg) scale(1.2); }
+            100% { transform: rotateY(180deg); }
+        }
+
+        .time-display {
+            position: absolute;
+            font-family: 'Courier New', monospace;
+            font-size: 2em;
+            background: rgba(0,0,0,0.8);
+            padding: 0.5em;
+            border: 2px solid var(--text-color);
+            animation: digitalClock 2s ease-in-out;
+        }
+        @keyframes digitalClock {
+            0% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 0.9; transform: scale(1); }
+        }
+
+        .molecule {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            animation: moleculeFloat 3s ease-in-out infinite;
+        }
+        @keyframes moleculeFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .sound-wave {
+            position: absolute;
+            height: 4px;
+            background: linear-gradient(to right, var(--love-color), transparent);
+            animation: soundWave 1s ease-in-out infinite;
+        }
+        @keyframes soundWave {
+            0% { width: 0; opacity: 1; }
+            100% { width: 200px; opacity: 0; }
+        }
+
+        .year-display {
+            position: absolute;
+            font-family: var(--font-display);
+            font-size: 3em;
+            color: gold;
+            text-shadow: 0 0 10px gold;
+            animation: timeTravel 0.5s ease-in-out;
+        }
+        @keyframes timeTravel {
+            0% { opacity: 0; transform: scale(2) rotateX(90deg); }
+            100% { opacity: 1; transform: scale(1) rotateX(0deg); }
+        }
+
+        .unite-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 3px solid var(--love-color);
+            border-radius: 50%;
+            animation: unite 2s ease-in-out;
+        }
+        @keyframes unite {
+            0% { transform: scale(0.1); opacity: 0; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        .trance-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 30%, rgba(255, 105, 180, 0.3) 100%);
+            animation: trance 4s ease-in-out;
+            z-index: 8;
+        }
+        @keyframes trance {
+            0%, 100% { transform: rotate(0deg) scale(1); opacity: 0; }
+            50% { transform: rotate(180deg) scale(1.1); opacity: 0.7; }
+        }
+        
+        .power-line {
+            position: absolute;
+            height: 2px;
+            background: var(--text-color);
+            box-shadow: 0 0 10px var(--text-color);
+            animation: powerPulse 0.5s infinite alternate;
+            z-index: 5;
+        }
+        @keyframes powerPulse {
+            0% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        .protection-shield {
+            position: absolute;
+            border: 3px solid var(--text-color);
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--text-color);
+            animation: shieldPulse 2s infinite;
+            z-index: 10;
+        }
+        @keyframes shieldPulse {
+            0% { transform: scale(0.5); opacity: 0.5; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.5); opacity: 0.5; }
+        }
+        
+        .object-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--text-color);
+            border-radius: 50%;
+            animation: particleFloat 3s ease-in-out;
+            z-index: 7;
+        }
+        @keyframes particleFloat {
+            0% { transform: translateY(0) scale(0.2); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1); opacity: 0; }
+        }
+    </style>
+<style data-id="immersive-translate-input-injected-css">.immersive-translate-input {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 2147483647;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.immersive-translate-attach-loading::after {
+  content: " ";
+
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-2000%, -50%);
+  z-index: 100;
+}
+
+.immersive-translate-loading-spinner {
+  vertical-align: middle !important;
+  width: 10px !important;
+  height: 10px !important;
+  display: inline-block !important;
+  margin: 0 4px !important;
+  border: 2px rgba(221, 244, 255, 0.6) solid !important;
+  border-top: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-left: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  -webkit-animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+  animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+}
+
+@-webkit-keyframes immersive-translate-loading-animation {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+
+  to {
+    -webkit-transform: rotate(359deg);
+  }
+}
+
+@keyframes immersive-translate-loading-animation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+.immersive-translate-input-loading {
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+}
+
+@keyframes immersiveTranslateShadowRolling {
+  0% {
+    box-shadow: 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  12% {
+    box-shadow: 100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  25% {
+    box-shadow: 110px 0 var(--loading-color), 100px 0 var(--loading-color),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  36% {
+    box-shadow: 120px 0 var(--loading-color), 110px 0 var(--loading-color),
+      100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  50% {
+    box-shadow: 130px 0 var(--loading-color), 120px 0 var(--loading-color),
+      110px 0 var(--loading-color), 100px 0 var(--loading-color);
+  }
+
+  62% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color),
+      120px 0 var(--loading-color), 110px 0 var(--loading-color);
+  }
+
+  75% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      130px 0 var(--loading-color), 120px 0 var(--loading-color);
+  }
+
+  87% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color);
+  }
+
+  100% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.immersive-translate-modal {
+  position: fixed;
+  z-index: 2147483647;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.4);
+  font-size: 15px;
+}
+
+.immersive-translate-modal-content {
+  background-color: #fefefe;
+  margin: 10% auto;
+  padding: 40px 24px 24px;
+  border-radius: 12px;
+  width: 350px;
+  font-family: system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu",
+    "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  position: relative;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-content {
+    margin: 25% auto !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .immersive-translate-modal-content {
+    width: 80vw !important;
+    margin: 20vh auto !important;
+    padding: 20px 12px 12px !important;
+  }
+
+  .immersive-translate-modal-title {
+    font-size: 14px !important;
+  }
+
+  .immersive-translate-modal-body {
+    font-size: 13px !important;
+    max-height: 60vh !important;
+  }
+
+  .immersive-translate-btn {
+    font-size: 13px !important;
+    padding: 8px 16px !important;
+    margin: 0 4px !important;
+  }
+
+  .immersive-translate-modal-footer {
+    gap: 6px !important;
+    margin-top: 16px !important;
+  }
+}
+
+.immersive-translate-modal .immersive-translate-modal-content-in-input {
+  max-width: 500px;
+}
+.immersive-translate-modal-content-in-input .immersive-translate-modal-body {
+  text-align: left;
+  max-height: unset;
+}
+
+.immersive-translate-modal-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #333333;
+}
+
+.immersive-translate-modal-body {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 400;
+  color: #333333;
+  margin-top: 24px;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-body {
+    max-height: 250px;
+    overflow-y: auto;
+  }
+}
+
+.immersive-translate-close {
+  color: #666666;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.immersive-translate-close:hover,
+.immersive-translate-close:focus {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.immersive-translate-modal-footer {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.immersive-translate-btn {
+  width: fit-content;
+  color: #fff;
+  background-color: #ea4c89;
+  border: none;
+  font-size: 14px;
+  margin: 0 8px;
+  padding: 9px 30px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.immersive-translate-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.immersive-translate-btn:hover {
+  background-color: #f082ac;
+}
+.immersive-translate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.immersive-translate-btn:disabled:hover {
+  background-color: #ea4c89;
+}
+
+.immersive-translate-link-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: none;
+  cursor: pointer;
+  height: 30px;
+  line-height: 30px;
+}
+
+.immersive-translate-cancel-btn {
+  /* gray color */
+  background-color: rgb(89, 107, 120);
+}
+
+.immersive-translate-cancel-btn:hover {
+  background-color: hsl(205, 20%, 32%);
+}
+
+.immersive-translate-action-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: 1px solid #ea4c89;
+}
+
+.immersive-translate-btn svg {
+  margin-right: 5px;
+}
+
+.immersive-translate-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-primary-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-modal input[type="radio"] {
+  margin: 0 6px;
+  cursor: pointer;
+}
+
+.immersive-translate-modal label {
+  cursor: pointer;
+}
+
+.immersive-translate-close-action {
+  position: absolute;
+  top: 2px;
+  right: 0px;
+  cursor: pointer;
+}
+
+.imt-image-status {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 16px !important;
+}
+.imt-image-status img,
+.imt-image-status svg,
+.imt-img-loading {
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 0 8px 0 !important;
+  min-height: 28px !important;
+  min-width: 28px !important;
+  position: relative !important;
+}
+.imt-img-loading {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAtFBMVEUAAAD////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////oK74hAAAAPHRSTlMABBMIDyQXHwyBfFdDMSw+OjXCb+5RG51IvV/k0rOqlGRM6KKMhdvNyZBz9MaupmxpWyj437iYd/yJVNZeuUC7AAACt0lEQVRIx53T2XKiUBCA4QYOiyCbiAsuuGBcYtxiYtT3f6/pbqoYHVFO5r+iivpo6DpAWYpqeoFfr9f90DsYAuRSWkFnPO50OgR9PwiCUFcl2GEcx+N/YBh6pvKaefHlUgZd1zVe0NbYcQjGBfzrPE8Xz8aF+71D8gG6DHFPpc4a7xFiCDuhaWgKgGIJQ3d5IMGDrpS4S5KgpIm+en9f6PlAhKby4JwEIxlYJV9h5k5nee9GoxHJ2IDSNB0dwdad1NAxDJ/uXDHYmebdk4PdbkS58CIVHdYSUHTYYRWOJblWSyu2lmy3KNFVJNBhxcuGW4YBVCbYGRZwIooipHsNqjM4FbgOQqQqSKQQU9V8xmi1QlgHqQQ6DDBvRUVCDirs+EzGDGOQTCATgtYTnbCVLgsVgRE0T1QE0qHCFAht2z6dLvJQs3Lo2FQoDxWNUiBhaP4eRgwNkI+dAjVOA/kUrIDwf3CG8NfNOE0eiFotSuo+rBiq8tD9oY4Qzc6YJw99hl1wzpQvD7ef2M8QgnOGJfJw+EltQc+oX2yn907QB22WZcvlUpd143dqQu+8pCJZuGE4xCuPXJqqcs5sNpsI93Rmzym1k4Npk+oD1SH3/a3LOK/JpUBpWfqNySxWzCfNCUITuDG5dtuphrUJ1myeIE9bIsPiKrfqTai5WZxbhtNphYx6GEIHihyGFTI69lje/rxajdh0s0msZ0zYxyPLhYCb1CyHm9Qsd2H37Y3lugVwL9kNh8Ot8cha6fUNQ8nuXi5z9/ExsAO4zQrb/ev1yrCB7lGyQzgYDGuxq1toDN/JGvN+HyWNHKB7zEoK+PX11e12G431erGYzwmytAWU56fkMHY5JJnDRR2eZji3AwtIcrEV8Cojat/BdQ7XOwGV1e1hDjGGjXbdArm8uJZtCH5MbcctVX8A1WpqumJHwckAAAAASUVORK5CYII=");
+  background-size: 28px 28px;
+  animation: image-loading-rotate 1s linear infinite !important;
+}
+
+.imt-image-status span {
+  color: var(--bg-2, #fff) !important;
+  font-size: 14px !important;
+  line-height: 14px !important;
+  font-weight: 500 !important;
+  font-family: "PingFang SC", Arial, sans-serif !important;
+}
+
+.imt-primary-button {
+  display: flex;
+  padding: 12px 80px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: #ea4c89;
+  color: #fff;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 24px;
+  border: none;
+  cursor: pointer;
+}
+
+.imt-retry-text {
+  color: #999;
+  text-align: center;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+  cursor: pointer;
+}
+
+.imt-action-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.imt-modal-content-text {
+  text-align: left;
+  color: #333;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+@keyframes image-loading-rotate {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.imt-linear-gradient-text {
+  background: linear-gradient(90deg, #00a6ff 0%, #c369ff 52.4%, #ff4590 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.imt-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-linear-black-btn {
+  border-radius: 50px;
+  background: linear-gradient(66deg, #222 19%, #696969 94.25%);
+  height: 48px;
+  width: 100%;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  justify-content: center;
+}
+</style></head>
+<body>
+    <div id="overlay">
+        <span>world.execute(me);</span>
+        <span>点击以运行<span id="overlay-cursor">_</span></span>
+    </div>
+
+    <audio id="song" preload="auto">
+        <source src="https://classy-lily-32904e.netlify.app/world-execute-me.wav" type="audio/wav">
+        您的浏览器不支持音频元素。
+    </audio>
+
+    <div id="container">
+        <div id="visuals"></div>
+    </div>
+
+    <script>
+        const song = document.getElementById('song');
+        const overlay = document.getElementById('overlay');
+        const visuals = document.getElementById('visuals');
+        const container = document.getElementById('container');
+
+        const timeline = [
+            { time: 0.100, func: typeLine, args: { text: "接上电源", onComplete: showPowerLines } },
+            { time: 1.740, func: typeLine, args: { text: "记得装备好" } },
+            { time: 2.920, func: showEmphasis, args: { text: "绝缘护具", onComplete: showProtectionShield } },
+            { time: 3.873, func: typeLine, args: { text: "摆好棋子" } },
+            { time: 5.491, func: typeLine, args: { text: "开始吧" } },
+            { time: 6.380, func: showCodeSnippet }, // title is now "对象生成中..."
+            { time: 7.446, func: typeLine, args: { text: "输入我的参数数据" } },
+            { time: 10.091, func: showProgressBar }, // title is now "初始化中..."
+            { time: 11.095, func: typeLine, args: { text: "设定好我们的新世界" } },
+            { time: 12.906, func: typeLine, args: { text: "开始吧" } },
+            { time: 13.891, func: showEmphasis, args: { text: "模拟程序" } },
+            
+            { time: 16.000, func: startBinaryRain },
+            { time: 29.000, func: stopBinaryRain },
+            { time: 29.500, func: clearScreen },
+
+            { time: 29.709, func: typeLine, args: { text: "如果我是一组点", onComplete: drawPoints } },
+            { time: 31.116, func: typeLine, args: { text: "那么我将献给你我的" } },
+            { time: 32.682, func: showEmphasis, args: { text: "次元" } },
+            { time: 33.412, func: typeLine, args: { text: "如果我是一个圆", onComplete: drawCircle } },
+            { time: 34.646, func: typeLine, args: { text: "那么我将献给你我的" } },
+            { time: 36.287, func: showEmphasis, args: { text: "圆周" } },
+            { time: 37.067, func: typeLine, args: { text: "如果我是一条正弦波", onComplete: drawSineWave } },
+            { time: 38.596, func: typeLine, args: { text: "那么请你坐上我的" } },
+            { time: 40.049, func: showEmphasis, args: { text: "切线", onComplete: drawTangents } },
+            { time: 40.706, func: typeLine, args: { text: "如果我趋近于无穷" } },
+            { time: 42.346, func: typeLine, args: { text: "那么你便可以成为我的", onComplete: drawLimitations } },
+            { time: 43.507, func: showEmphasis, args: { text: "极限" } },
+            
+            { time: 44.452, func: typeLine, args: { text: "切换我的电流" } },
+            { time: 45.850, func: typeLine, args: { text: "从交流到直流", onComplete: currentSwitch } },
+            { time: 47.672, func: typeLine, args: { text: "然后蒙上我的眼睛" } },
+            { time: 49.534, func: blindVision },
+            { time: 50.000, func: typeLine, args: { text: "头晕目眩" } },
+            
+            { time: 51.363, func: typeLine, args: { text: "我们可以穿越时空" } },
+            { time: 53.225, func: typeLine, args: { text: "从西历到公元前", onComplete: timeTravel } },
+            { time: 55.083, func: typeLine, args: { text: "然后成为一体" } },
+            { time: 56.916, func: typeLine, args: { text: "深深入髓", onComplete: uniteEffect } },
+            
+            { time: 58.000, func: clearScreen },
+            
+            { time: 59.223, func: typeLine, args: { text: "如果我能够，如果我能够献给你所有的" } },
+            { time: 61.958, func: showEmphasis, args: { text: "刺激" } },
+            { time: 62.589, func: typeLine, args: { text: "那么我就能够，那么我就能够成为你的唯一的" } },
+            { time: 65.397, func: showEmphasis, args: { text: "满足" } },
+            { time: 66.601, func: typeLine, args: { text: "如果我能够让你开心" } },
+            { time: 68.252, func: typeLine, args: { text: "那么我将" } },
+            { time: 69.259, func: showEmphasis, args: { text: "执行指令" } },
+            { time: 70.084, func: typeLine, args: { text: "但我们被困" } },
+            { time: 71.764, func: typeLine, args: { text: "在这个异乎寻常的" } },
+            { time: 73.169, func: showEmphasis, args: { text: "模拟程式之中" } },
+            
+            { time: 74.045, func: clearScreenAndShapes },
+            { time: 74.045, func: typeLine, args: { text: "如果我是一根茄子", onComplete: () => showEmoji('🍆') } },
+            { time: 75.422, func: typeLine, args: { text: "那么我将献给你我的" } },
+            { time: 76.959, func: showEmphasis, args: { text: "营养", onComplete: showNutrients } },
+            { time: 77.576, func: typeLine, args: { text: "如果我是一颗番茄", onComplete: () => showEmoji('🍅') } },
+            { time: 79.226, func: typeLine, args: { text: "那么我将献给你我的" } },
+            { time: 80.620, func: showEmphasis, args: { text: "抗氧化物", onComplete: showMolecules } },
+            { time: 81.351, func: typeLine, args: { text: "如果我是一只花猫", onComplete: () => showEmoji('🐱') } },
+            { time: 82.833, func: typeLine, args: { text: "那我将为你咕噜咕噜" } },
+            { time: 84.268, func: showEmphasis, args: { text: "只要你喜欢", onComplete: showSoundWaves } },
+            { time: 85.078, func: typeLine, args: { text: "如果我是唯一的神", onComplete: () => showEmoji('⚡') } },
+            { time: 86.538, func: typeLine, args: { text: "那么你将是我" } },
+            { time: 87.922, func: showEmphasis, args: { text: "存在的证明" } },
+            
+            { time: 88.587, func: typeLine, args: { text: "切换我的性别" } },
+            { time: 90.197, func: typeLine, args: { text: "从女到男", onComplete: genderSwitch } },
+            { time: 92.015, func: typeLine, args: { text: "只做想做的事情" } },
+            { time: 93.953, func: typeLine, args: { text: "从早到晚", onComplete: showTimeDisplay } },
+            { time: 95.465, func: typeLine, args: { text: "哦 切换我的角色" } },
+            { time: 97.739, func: typeLine, args: { text: "从施虐者到被虐者", onComplete: roleSwitch } },
+            { time: 99.349, func: typeLine, args: { text: "这样我们就可以" } },
+            { time: 101.474, func: typeLine, args: { text: "恍惚出神", onComplete: enterTrance } },
+            
+            { time: 102.500, func: clearScreen },
+
+            { time: 103.489, func: typeLine, args: { text: "如果我能够，如果我能够感受到你的" } },
+            { time: 106.293, func: showEmphasis, args: { text: "振动", onComplete: rippleEffect } },
+            { time: 107.220, func: typeLine, args: { text: "那么我就能够，那么我就能够终于" } },
+            { time: 110.221, func: showEmphasis, args: { text: "变为完全" } },
+            
+            { time: 110.900, func: clearScreen },
+            { time: 110.900, func: typeLine, args: { text: "但你还是走了" } },
+            { time: 112.220, func: typeLine, args: { text: "你走了" } },
+            { time: 113.100, func: typeLine, args: { text: "你走了" } },
+            { time: 114.180, func: typeLine, args: { text: "你走了" } },
+            { time: 114.920, func: typeLine, args: { text: "你走了" } },
+            { time: 115.780, func: typeLine, args: { text: "你离我而去" } },
+            { time: 117.274, func: showIsolation },
+            
+            { time: 118.333, func: clearScreen },
+            { time: 118.333, func: typeLine, args: { text: "如果我能够，如果我能够消去这些无意义的" } },
+            { time: 120.860, func: showEmphasis, args: { text: "碎片" } },
+            { time: 121.728, func: typeLine, args: { text: "那么我就可能，那么我就可能不会如此" } },
+            { time: 124.890, func: showEmphasis, args: { text: "失望" } },
+            
+            { time: 125.708, func: clearScreen },
+            { time: 125.708, func: addClass, args: { target: container, className: 'error screenShake', duration: 12000 } },
+            { time: 125.708, func: typeLine, args: { text: "与神作对" } },
+            { time: 128.661, func: typeLine, args: { text: "你传给我的是" } },
+            { time: 131.224, func: showEmphasis, args: { text: "非法参数" } },
+
+            { time: 133.500, func: showBSOD },
+            { time: 147.000, func: hideBSOD },
+            
+            { time: 147.660, func: clearScreen },
+            { time: 147.660, func: executionSpamExtended, args: { duration: 10340 } }, // "EXECUTION" (english) spamming
+            
+            { time: 158.900, func: showChaosText, args: { text: "一" } },
+            { time: 159.321, func: showChaosText, args: { text: "二" } },
+            { time: 159.657, func: showChaosText, args: { text: "三" } },
+            { time: 160.244, func: showChaosText, args: { text: "四" } },
+            { time: 160.693, func: showChaosText, args: { text: "五" } },
+            { time: 161.124, func: showChaosText, args: { text: "六" } },
+            { time: 161.584, func: showEmphasis, args: { text: "死刑" } },
+            
+            { time: 162.632, func: clearScreen },
+            { time: 162.632, func: typeLine, args: { text: "如果我能够，如果我能够给所有人赐予" } },
+            { time: 165.166, func: showEmphasis, args: { text: "死刑", className: 'error' } },
+            { time: 166.016, func: typeLine, args: { text: "那么我就能够，那么我就能够成为你的" } },
+            { time: 168.911, func: showEmphasis, args: { text: "唯一执行", className: 'error' } },
+            { time: 169.824, func: typeLine, args: { text: "如果你能够回到我身边" } },
+            { time: 171.868, func: typeLine, args: { text: "那么我将" } },
+            { time: 172.712, func: showEmphasis, args: { text: "执行指令", className: 'error' } },
+            { time: 173.643, func: typeLine, args: { text: "但我们始终被困，始终被困，啊—" } },
+
+            { time: 177.246, func: clearScreen },
+            { time: 177.246, func: typeLine, args: { text: "我学会了，我学会了如何正确去" } },
+            { time: 179.929, func: showEmphasis, args: { text: "L O-O-O V E", className: 'love' } },
+            { time: 180.857, func: typeLine, args: { text: "提问我吧，我全部都能答对只要是关于" } },
+            { time: 183.646, func: showEmphasis, args: { text: "L O-O-O V E", className: 'love' } },
+            { time: 184.540, func: typeLine, args: { text: "就连爱的代数表达式" } },
+            { time: 187.665, func: showEmphasis, args: { text: "我都知晓", className: 'love' } },
+            
+            { time: 188.483, func: clearScreen },
+            { time: 188.483, func: typeLine, args: { text: "虽然你已自由...", style: {opacity: 0.7} } },
+            { time: 189.746, func: typeLine, args: { text: "我仍被困。", style: {fontSize: '1.5em'} } },
+            { time: 190.801, func: typeLine, args: { text: "被困在" } },
+            { time: 191.356, func: showTrappedInLove },
+            
+            { time: 205.811, func: clearScreen },
+            { time: 205.811, func: finalExecution },
+        ];
+        
+        // --- Core Logic ---
+        let currentIndex = 0;
+        let animationFrameId;
+
+        function startExperience() {
+            overlay.classList.add('hidden');
+            song.play().then(() => {
+                animationFrameId = requestAnimationFrame(update);
+            }).catch(e => {
+                console.error("Audio playback failed:", e);
+                overlay.innerHTML = `<span>错误：无法播放音频。</span><span>'world-execute-me.wav' 是否在同一文件夹中？</span>`;
+                overlay.classList.remove('hidden');
+            });
+        }
+
+        function update() {
+            const currentTime = song.currentTime;
+            while (currentIndex < timeline.length && currentTime >= timeline[currentIndex].time) {
+                const event = timeline[currentIndex];
+                event.func(event.args || {});
+                currentIndex++;
+            }
+            if (!song.ended) {
+                animationFrameId = requestAnimationFrame(update);
+            } else {
+                cancelAnimationFrame(animationFrameId);
+            }
+        }
+        overlay.addEventListener('click', startExperience, { once: true });
+        
+        // --- Visual Functions ---
+        function typeLine({ text, className = '', style = {}, onComplete = null }) {
+            const line = document.createElement('div');
+            line.className = `line ${className}`;
+            Object.assign(line.style, style);
+            line.innerHTML = `<span class="prompt">C:\\> </span><span class="text"></span><span class="cursor"></span>`;
+            visuals.appendChild(line);
+            
+            const textSpan = line.querySelector('.text');
+            const cursor = line.querySelector('.cursor');
+            let i = 0;
+            const typingInterval = setInterval(() => {
+                if (i < text.length) {
+                    textSpan.textContent += text.charAt(i);
+                    i++;
+                    visuals.scrollTop = visuals.scrollHeight;
+                } else {
+                    clearInterval(typingInterval);
+                    cursor.remove();
+                    if (onComplete) onComplete();
+                }
+            }, 80); // Adjusted typing speed for chinese characters
+        }
+
+        function showEmphasis({ text, className = '', onComplete = null }) {
+            const el = document.createElement('div');
+            el.className = `emphasis ${className}`;
+            el.textContent = text;
+            visuals.appendChild(el);
+            visuals.scrollTop = visuals.scrollHeight;
+            if (onComplete) onComplete();
+        }
+
+        function clearScreen() { visuals.innerHTML = ''; }
+        function clearShapes() { document.querySelectorAll('.shape, .emoji-display, .gender-symbol, .time-display, .molecule, .sound-wave, .year-display, .unite-effect, .trance-overlay, .power-line, .protection-shield, .object-particle').forEach(el => el.remove()); }
+        function clearScreenAndShapes() { clearScreen(); clearShapes(); }
+
+        function addClass({ target, className, duration }) {
+            target.classList.add(...className.split(' '));
+            setTimeout(() => {
+                target.classList.remove(...className.split(' '));
+            }, duration);
+        }
+        
+        function showPowerLines() { for (let i = 0; i < 5; i++) { setTimeout(() => { const line = document.createElement('div'); line.className = 'power-line'; line.style.top = `${Math.random() * 100}%`; line.style.left = '0'; line.style.width = '100%'; container.appendChild(line); setTimeout(() => line.remove(), 1000); }, i * 200); } }
+        function showProtectionShield() { const shield = document.createElement('div'); shield.className = 'protection-shield'; shield.style.left = '50%'; shield.style.top = '50%'; shield.style.transform = 'translate(-50%, -50%)'; shield.style.width = '300px'; shield.style.height = '300px'; container.appendChild(shield); setTimeout(() => shield.remove(), 2000); }
+        function currentSwitch() { addClass({ target: container, className: 'ac-mode', duration: 500 }); setTimeout(() => { addClass({ target: container, className: 'dc-mode', duration: 500 }); }, 500); }
+        function blindVision() { addClass({ target: container, className: 'blind dizzy', duration: 3000 }); }
+        
+        function timeTravel() {
+            addClass({ target: container, className: 'time-travel', duration: 3000 });
+            const years = ['西历 2024', '西历 1000', '公元前 500', '公元前 1000'];
+            years.forEach((year, i) => {
+                setTimeout(() => {
+                    const yearEl = document.createElement('div');
+                    yearEl.className = 'year-display';
+                    yearEl.textContent = year;
+                    yearEl.style.left = `${15 + i * 22}%`;
+                    yearEl.style.top = `${30 + i * 10}%`;
+                    container.appendChild(yearEl);
+                    setTimeout(() => yearEl.remove(), 1000);
+                }, i * 300);
+            });
+        }
+        
+        function uniteEffect() { for (let i = 0; i < 3; i++) { setTimeout(() => { const unite = document.createElement('div'); unite.className = 'unite-effect'; unite.style.left = `${30 + i * 20}%`; unite.style.top = `${40 + i * 10}%`; container.appendChild(unite); setTimeout(() => unite.remove(), 2000); }, i * 500); } }
+        function showEmoji(emoji) { const el = document.createElement('div'); el.className = 'emoji-display'; el.textContent = emoji; el.style.left = `${Math.random() * 70 + 15}%`; el.style.top = `${Math.random() * 60 + 20}%`; container.appendChild(el); setTimeout(() => el.remove(), 2000); }
+        function showNutrients() { const nutrients = ['茄红素', '纤维', '钾', '叶酸']; nutrients.forEach((nutrient, i) => { setTimeout(() => { const el = document.createElement('div'); el.className = 'emoji-display'; el.style.fontSize = '1.5em'; el.style.color = '#90EE90'; el.textContent = nutrient; el.style.left = `${20 + i * 15}%`; el.style.top = `${25 + i * 8}%`; container.appendChild(el); setTimeout(() => el.remove(), 2000); }, i * 200); }); }
+        function showMolecules() { for (let i = 0; i < 8; i++) { setTimeout(() => { const molecule = document.createElement('div'); molecule.className = 'molecule'; molecule.style.left = `${Math.random() * 80 + 10}%`; molecule.style.top = `${Math.random() * 70 + 15}%`; container.appendChild(molecule); setTimeout(() => molecule.remove(), 3000); }, i * 100); } }
+        function showSoundWaves() { for (let i = 0; i < 6; i++) { setTimeout(() => { const wave = document.createElement('div'); wave.className = 'sound-wave'; wave.style.left = '30%'; wave.style.top = `${40 + i * 5}%`; container.appendChild(wave); setTimeout(() => wave.remove(), 1000); }, i * 150); } }
+        
+        function genderSwitch() {
+            const symbols = ['♀', '♂'];
+            symbols.forEach((symbol, i) => { setTimeout(() => { const el = document.createElement('div'); el.className = 'gender-symbol'; el.textContent = symbol; el.style.left = `${40 + i * 20}%`; el.style.top = '30%'; el.style.color = i === 0 ? '#FF69B4' : '#4169E1'; container.appendChild(el); setTimeout(() => el.remove(), 1500); }, i * 500); });
+        }
+        
+        function showTimeDisplay() {
+            const times = ['AM 06:00', 'PM 18:00'];
+            times.forEach((time, i) => { setTimeout(() => { const el = document.createElement('div'); el.className = 'time-display'; el.textContent = time; el.style.left = `${30 + i * 25}%`; el.style.top = '40%'; container.appendChild(el); setTimeout(() => el.remove(), 1500); }, i * 600); });
+        }
+        
+        function roleSwitch() {
+            const roles = ['S', 'M'];
+            roles.forEach((role, i) => { setTimeout(() => { const el = document.createElement('div'); el.className = 'gender-symbol'; el.textContent = role; el.style.left = `${35 + i * 30}%`; el.style.top = '35%'; el.style.color = i === 0 ? '#FF4444' : '#8A2BE2'; container.appendChild(el); setTimeout(() => el.remove(), 1200); }, i * 400); });
+        }
+        
+        function enterTrance() { const trance = document.createElement('div'); trance.className = 'trance-overlay'; container.appendChild(trance); setTimeout(() => trance.remove(), 4000); }
+        
+        let binaryRainInterval;
+        function startBinaryRain() {
+            const canvas = document.createElement('canvas'); canvas.id = 'binary-canvas'; container.appendChild(canvas); const ctx = canvas.getContext('2d'); canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+            const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const nums = '0123456789'; const alphabet = katakana + latin + nums; const fontSize = 16; const columns = canvas.width / fontSize;
+            const rainDrops = []; for (let x = 0; x < columns; x++) rainDrops[x] = 1;
+            binaryRainInterval = setInterval(() => {
+                ctx.fillStyle = 'rgba(10, 10, 10, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = varGet('--text-color'); ctx.font = fontSize + 'px monospace';
+                for (let i = 0; i < rainDrops.length; i++) {
+                    const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length)); ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                    if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) { rainDrops[i] = 0; }
+                    rainDrops[i]++;
+                }
+            }, 33);
+        }
+        
+        function stopBinaryRain() {
+            clearInterval(binaryRainInterval); const canvas = document.getElementById('binary-canvas');
+            if(canvas) { canvas.style.transition = 'opacity 1s'; canvas.style.opacity = '0'; setTimeout(() => canvas.remove(), 1000); }
+        }
+        
+        function showCodeSnippet() {
+            const el = document.createElement('div');
+            el.className = 'code-snippet';
+            el.innerHTML = `> 对象生成中...
+<span class="token.keyword">class</span> <span class="token.class-name">Me</span> {
+  <span class="token.function">constructor</span>(<span class="token.string">'you'</span>) {
+    <span class="token.keyword">this</span>.world = <span class="token.string">'you'</span>;
+    <span class="token.keyword">this</span>.existence = <span class="token.keyword">new</span> <span class="token.function">Promise</span>(...)
+  }
+}`;
+            visuals.appendChild(el);
+            for (let i = 0; i < 20; i++) { setTimeout(() => { const particle = document.createElement('div'); particle.className = 'object-particle'; particle.style.left = `${Math.random() * 100}%`; particle.style.top = '100%'; container.appendChild(particle); }, i * 100); }
+        }
+
+        function showProgressBar() {
+            const container = document.createElement('div'); container.className = 'progress-bar-container';
+            container.innerHTML = `> 初始化中...<div class="progress-bar-bg"><div class="progress-bar"></div></div>`;
+            visuals.appendChild(container);
+            setTimeout(() => { container.querySelector('.progress-bar').style.width = '100%'; }, 100);
+        }
+        
+        function drawPoints() { clearShapes(); for (let i=0;i<50;i++) { const p=document.createElement('div'); p.className='shape point'; p.style.left=`${Math.random()*90+5}%`; p.style.top=`${Math.random()*90+5}%`; container.appendChild(p); }}
+        function drawCircle() { clearShapes(); const c=document.createElement('div'); c.className='shape circle'; const s=Math.min(innerWidth,innerHeight)*0.4; c.style.width=`${s}px`; c.style.height=`${s}px`; c.style.left=`calc(50% - ${s/2}px)`; c.style.top=`calc(50% - ${s/2}px)`; container.appendChild(c); }
+        let sineWavePoints = [];
+        function drawSineWave() {
+            clearShapes(); sineWavePoints = []; const width = window.innerWidth * 0.8;
+            for(let i=0; i<100; i++) {
+                const dot = document.createElement('div'); dot.className = 'shape sine-dot';
+                const x = i/100 * width + window.innerWidth * 0.1; const y = Math.sin(i/100 * Math.PI * 4) * 80 + (window.innerHeight / 2);
+                sineWavePoints.push({x, y, i}); dot.style.left = `${x}px`; dot.style.top = `${y}px`; container.appendChild(dot);
+            }
+        }
+        function drawTangents() {
+            for(let i = 0; i < 5; i++) {
+                const p = sineWavePoints[Math.floor(Math.random() * sineWavePoints.length)]; const tangent = document.createElement('div');
+                tangent.className = 'shape tangent-line'; const derivative = Math.cos(p.i / 100 * Math.PI * 4) * 4 * Math.PI / 100;
+                const angle = Math.atan(derivative * 80 / (window.innerWidth*0.8)) * (180 / Math.PI);
+                tangent.style.width = '150px'; tangent.style.left = `${p.x}px`; tangent.style.top = `${p.y}px`; tangent.style.transform = `rotate(${angle}deg)`;
+                container.appendChild(tangent);
+            }
+        }
+        function drawLimitations() { for(let i = 0; i < 2; i++) { const limit = document.createElement('div'); limit.className = 'shape limit-line'; limit.style.width = '100vw'; limit.style.left = '0'; limit.style.top = i === 0 ? '10%' : '90%'; container.appendChild(limit); } }
+        function rippleEffect() {
+            const ripple = document.createElement('div'); ripple.className = 'shape circle';
+            Object.assign(ripple.style, { borderColor: 'var(--love-color)', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '10px', height: '10px', opacity: 1 });
+            container.appendChild(ripple);
+            let size = 10;
+            const rippleInterval = setInterval(() => {
+                size += 50; ripple.style.width = `${size}px`; ripple.style.height = `${size}px`;
+                ripple.style.opacity = 1 - (size / window.innerWidth);
+                if (size > window.innerWidth) { clearInterval(rippleInterval); ripple.remove(); }
+            }, 30);
+        }
+
+        function showIsolation() { clearScreen(); showEmphasis({ text: '在孤独之中', className: 'error' }); }
+        
+        function showBSOD() {
+            const bsod = document.createElement('div'); bsod.id = 'bsod-screen';
+            let dump = 'Dumping physical memory to disk: '; for(let i=0; i<10; i++) dump += Math.floor(Math.random()*10);
+            bsod.innerHTML = `<div class="bsod-text">
+                <p>A problem has been detected and world has been shut down to prevent damage.</p>
+                <p>ILLEGAL_ARGUMENT_EXCEPTION</p><br>
+                <p>If this is the first time you've seen this stop error screen, restart your simulation. If this screen appears again, follow these steps:</p>
+                <p>Check to be sure you have adequate connection. If a new component is installed, ask your administrator or manufacturer for any updates you might need.</p><br>
+                <p>Technical Information:</p>
+                <p>*** STOP: 0x0000004E (0x00000099, 0x00000000, 0x00000000, 0x00000000)</p>
+                <p class="bsod-dump">${dump}</p></div>`;
+            container.appendChild(bsod);
+        }
+        function hideBSOD() {
+            const bsod = document.getElementById('bsod-screen');
+            if(bsod) { bsod.style.transition = 'opacity 0.5s'; bsod.style.opacity = '0'; setTimeout(() => bsod.remove(), 500); }
+        }
+
+        function executionSpamExtended({ duration }) {
+            const endTime = Date.now() + duration; let count = 0;
+            function spamStep() {
+                if (Date.now() >= endTime) return;
+                const e = document.createElement('div'); e.className = 'emphasis error';
+                e.textContent = 'EXECUTION';
+                Object.assign(e.style, { position: 'absolute', left: `${Math.random() * 60}%`, top: `${Math.random() * 70}%`, fontSize: `${Math.random() * 4 + 2}em`, transform: `rotate(${Math.random() * 40 - 20}deg)`, animation: 'none', textShadow: '0 0 10px var(--error-color)', zIndex: count % 3 === 0 ? 20 : 15 });
+                visuals.appendChild(e);
+                setTimeout(() => e.remove(), Math.random() * 1000 + 500);
+                count++;
+                setTimeout(spamStep, Math.random() * 300 + 100);
+            }
+            spamStep();
+        }
+
+        function showChaosText({ text }) {
+            const e = document.createElement('div'); e.className = 'chaos-text'; e.textContent = text;
+            Object.assign(e.style, { left: `${Math.random()*80}%`, top: `${Math.random()*80}%`, fontSize: `${Math.random()*3+2}em`, color: `hsl(${Math.random()*360}, 100%, 70%)` });
+            visuals.appendChild(e); setTimeout(() => e.remove(), 500);
+        }
+
+        function showTrappedInLove() {
+            const el = document.createElement('div'); el.className = 'code-snippet love';
+            el.style.borderColor = 'var(--love-color)';
+            el.innerHTML = `> 我仍被困 在爱之中...
+<span class="token.keyword">while</span>(<span class="token.class-name">true</span>) {
+  <span class="token.keyword">this</span>.<span class="token.function">love</span>(<span class="token.string">'you'</span>);
+} <span class="love-cursor">❤</span>`;
+            const cursor = el.querySelector('.love-cursor'); setInterval(() => { cursor.style.opacity = cursor.style.opacity === '0' ? '1' : '0'; }, 500);
+            visuals.appendChild(el);
+        }
+
+        function finalExecution() { showEmphasis({ text: '执行死刑', className: 'error' }); }
+        function varGet(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+    </script>
+
+
+<div id="immersive-translate-popup" style="all: initial"></div></body>
