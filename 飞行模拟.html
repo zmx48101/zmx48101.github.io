@@ -468,17 +468,23 @@ function loop(){
         if(plane.y<minSafe){
             plane.y=minSafe;
 
-            //撞击水面判定
-            if(!plane.crashed && groundH <= WATER_LEVEL)
+            if(!plane.crashed)
             {
-                if(Math.abs(plane.speed) > 2){
-                    //高速入水：直接解体生成碎片，不冒烟
-                    plane.crashed=true;
-                    spawnDebrisRobloxStyle();
+                if(groundH <= WATER_LEVEL)
+                {
+                    //水面撞击
+                    if(Math.abs(plane.speed) > 2){
+                        plane.crashed=true;
+                        spawnDebrisRobloxStyle();
+                    }else{
+                        plane.crashed = true;
+                        plane.smoking = true;
+                    }
                 }else{
-                    //低速入水：标记坠毁锁操控 + 开启冒烟
-                    plane.crashed = true;
-                    plane.smoking = true;
+                    if(Math.abs(plane.speed) >=0){
+                        plane.crashed=true;
+                        spawnDebrisRobloxStyle();
+                    }
                 }
             }
         }
