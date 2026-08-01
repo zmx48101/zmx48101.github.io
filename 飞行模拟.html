@@ -2,591 +2,551 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>3D飞机｜修复版 鼠标视角+正常飞行</title>
+    <title>3D飞机</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-        }
-        canvas {
-            display: block;
-        }
+        * {margin: 0;padding: 0;}
+        canvas {display: block;}
         #ui {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(0, 0, 0, 0.55);
-            color: #fff;
-            padding: 10px 14px;
-            font-family: system-ui;
-            border-radius: 6px;
-            font-size: 14px;
-            user-select: none;
-            pointer-events: none;
+            position: absolute;top:12px;left:12px;
+            background:rgba(0,0,0,0.55);color:#fff;
+            padding:10px 14px;font-family:system-ui;border-radius:6px;font-size:14px;
+            user-select:none;pointer-events:none;
         }
         #fps {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(0, 0, 0, 0.55);
-            color: #fff;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-family: monospace;
-            user-select: none;
-            pointer-events: none;
+            position:absolute;top:12px;right:12px;
+            background:rgba(0,0,0,0.55);color:#fff;
+            padding:6px 10px;border-radius:6px;font-family:monospace;
+            user-select:none;pointer-events:none;
         }
     </style>
 </head>
 <body>
-    <div id="ui">
-        W 加速｜S 减速<br>
-        A/D 飞机转向（机身倾斜）｜Q/E 抬头低头<br>
-        鼠标左键拖拽=自由视角｜滚轮=拉近/拉远相机
-    </div>
-    <div id="fps">FPS: 60</div>
+<div id="ui">
+    W 加速｜S 减速<br>
+    A/D 转向｜Q/E 抬头/低头<br>
+    鼠标左键拖拽视角｜滚轮缩放<br>
+    R 重置飞机<br>
+    速度：<span id="speedText">0.00</span>
+</div>
+<div id="fps">FPS:60</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js">
-    </script>
-    <script>
-        // ============================================================
-        //  Simplex 噪声
-        // ============================================================
-        function SimplexNoise() {
-            const perm = [];
-            const permMod12 = [];
-            const grad3 = [
-                [1, 1, 0],
-                [-1, 1, 0],
-                [1, -1, 0],
-                [-1, -1, 0],
-                [1, 0, 1],
-                [-1, 0, 1],
-                [1, 0, -1],
-                [-1, 0, -1],
-                [0, 1, 1],
-                [0, -1, 1],
-                [0, 1, -1],
-                [0, -1, -1]
-            ];
-            const p = [151, 160, 137, 91, 90, 15, 131, 133, 142, 178, 146, 130, 168, 162, 97, 134,
-                243, 102, 140, 126, 86, 82, 117, 122, 132, 139, 124, 87, 68, 163, 148, 163,
-                126, 67, 61, 168, 133, 151, 187, 121, 157, 164, 177, 134, 199, 146, 147, 129,
-                139, 168, 150, 130, 120, 115, 135, 134, 164, 149, 145, 121, 138, 140, 132
-            ];
-            for (let i = 0; i < 256; i++) {
-                perm[i] = p[i % p.length];
-                perm[i + 256] = perm[i];
-                permMod12[i] = perm[i] % 12;
-                permMod12[i + 256] = permMod12[i];
-            }
-            const F2 = 0.5 * (Math.sqrt(3) - 1);
-            const G2 = (3 - Math.sqrt(3)) / 6;
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+// Simplex噪声
+function SimplexNoise() {
+    const perm = [];
+    const permMod12 = [];
+    const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+    const p = [151, 160, 137, 91, 90, 15, 131, 133, 142, 178, 146, 130, 168, 162, 97, 134,
+        243, 102, 140, 126, 86, 82, 117, 122, 132, 139, 124, 87, 68, 163, 148, 163,
+        126, 67, 61, 168, 133, 151, 187, 121, 157, 164, 177, 134, 199, 146, 147, 129,
+        139, 168, 150, 130, 120, 115, 135, 134, 164, 149, 145, 121, 138, 140, 132];
+    for(let i=0;i<256;i++){perm[i]=p[i%p.length];perm[i+256]=perm[i];permMod12[i]=perm[i]%12;permMod12[i+256]=permMod12[i];}
+    const F2=0.5*(Math.sqrt(3)-1);const G2=(3-Math.sqrt(3))/6;
+    function dot(g,x,y){return g[0]*x+g[1]*y;}
+    this.noise=function(x,y){
+        const s=(x+y)*F2;let i=Math.floor(x+s);let j=Math.floor(y+s);
+        const t=(i+j)*G2;const X=i-t;const Y=j-t;
+        const x0=x-X;const y0=y-Y;
+        let i1,j1;if(x0>y0){i1=1;j1=0;}else{i1=0;j1=1;}
+        const x1=x0-i1+G2;const y1=y0-j1+G2;
+        const x2=x0-1+2*G2;const y2=y0-1+2*G2;
+        const ii=i&255;const jj=j&255;
+        let n0=0,n1=0,n2=0;
+        let t0=0.5-x0*x0-y0*y0;
+        if(t0>=0){const gi0=permMod12[ii+perm[jj]];t0*=t0;n0=t0*t0*dot(grad3[gi0],x0,y0);}
+        let t1=0.5-x1*x1-y1*y1;
+        if(t1>=0){const gi1=permMod12[ii+i1+perm[jj+j1]];t1*=t1;n1=t1*t1*dot(grad3[gi1],x1,y1);}
+        let t2=0.5-x2*x2-y2*y2;
+        if(t2>=0){const gi2=permMod12[ii+1+perm[jj+1]];t2*=t2;n2=t2*t2*dot(grad3[gi2],x2,y2);}
+        return 70*(n0+n1+n2);
+    }
+}
+const noise=new SimplexNoise();
 
-            function dot(g, x, y) { return g[0] * x + g[1] * y; }
-            this.noise = function(x, y) {
-                const s = (x + y) * F2;
-                let i = Math.floor(x + s);
-                let j = Math.floor(y + s);
-                const t = (i + j) * G2;
-                const X = i - t;
-                const Y = j - t;
-                const x0 = x - X;
-                const y0 = y - Y;
-                let i1, j1;
-                if (x0 > y0) { i1 = 1;
-                    j1 = 0; } else { i1 = 0;
-                    j1 = 1; }
-                const x1 = x0 - i1 + G2;
-                const y1 = y0 - j1 + G2;
-                const x2 = x0 - 1 + 2 * G2;
-                const y2 = y0 - 1 + 2 * G2;
-                const ii = i & 255;
-                const jj = j & 255;
-                let n0, n1, n2;
-                let t0 = 0.5 - x0 * x0 - y0 * y0;
-                if (t0 >= 0) {
-                    const gi0 = permMod12[ii + perm[jj]];
-                    t0 *= t0;
-                    n0 = t0 * t0 * dot(grad3[gi0], x0, y0);
-                } else n0 = 0;
-                let t1 = 0.5 - x1 * x1 - y1 * y1;
-                if (t1 >= 0) {
-                    const gi1 = permMod12[ii + i1 + perm[jj + j1]];
-                    t1 *= t1;
-                    n1 = t1 * t1 * dot(grad3[gi1], x1, y1);
-                } else n1 = 0;
-                let t2 = 0.5 - x2 * x2 - y2 * y2;
-                if (t2 >= 0) {
-                    const gi2 = permMod12[ii + 1 + perm[jj + 1]];
-                    t2 *= t2;
-                    n2 = t2 * t2 * dot(grad3[gi2], x2, y2);
-                } else n2 = 0;
-                return 70 * (n0 + n1 + n2);
-            };
+// ========== 场景初始化 ==========
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
+scene.fog=new THREE.Fog(0x87ceeb,35,130);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,300);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+const dirLight=new THREE.DirectionalLight(0xffffff,1.2);
+dirLight.position.set(30,60,30);dirLight.castShadow=true;
+scene.add(dirLight);scene.add(new THREE.AmbientLight(0xffffff,0.3));
+// 烟雾粒子系统
+const smokeParticles = [];
+const SMOKE_SPAWN_RATE = 8; // 每帧生成烟雾数量
+let smokeSpawnTimer = 0;
+
+function createSmoke(pos) {
+    const geo = new THREE.SphereGeometry(0.25, 8, 6);
+    const mat = new THREE.MeshBasicMaterial({
+        color: 0x888888,
+        transparent: true,
+        opacity: 0.6
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    mesh.userData = {
+        vel: new THREE.Vector3(
+            (Math.random()-0.5)*0.2,
+            Math.random()*0.3 + 0.15,
+            (Math.random()-0.5)*0.2
+        ),
+        life: 0,
+        maxLife: 3.5
+    };
+    scene.add(mesh);
+    smokeParticles.push(mesh);
+}
+const speedDom = document.getElementById('speedText');
+
+//地形参数
+const TERRAIN_CHUNK_SIZE=80;const SEGMENTS=64;const HEIGHT_SCALE=1.8;
+const NOISE_SCALE=0.04;const RENDER_RANGE=2;const UNLOAD_RANGE=3.2;const WATER_LEVEL=0;
+const chunks=new Map();const clouds=[];let treePositions=[];
+
+function getHeight(wx,wz){
+    let h=noise.noise(wx*NOISE_SCALE,wz*NOISE_SCALE*1);
+    h+=0.45*noise.noise(wx*NOISE_SCALE*2,wz*NOISE_SCALE*2);
+    h+=0.22*noise.noise(wx*NOISE_SCALE*4,wz*NOISE_SCALE*4);
+    return h*HEIGHT_SCALE;
+}
+
+function buildTree(){
+    const g=new THREE.Group();
+    const trunkMat=new THREE.MeshLambertMaterial({color:0x6b4423});
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.25,1.2,6),trunkMat);
+    trunk.position.y=0.6;g.add(trunk);
+    const leafMat=new THREE.MeshLambertMaterial({color:0x2d7022});
+    const leaf=new THREE.Mesh(new THREE.ConeGeometry(0.9,2.2,8),leafMat);
+    leaf.position.y=1.8;g.add(leaf);
+    return g;
+}
+
+function createChunk(cx,cz){
+    const size=TERRAIN_CHUNK_SIZE;const seg=SEGMENTS;const half=size/2;const step=size/seg;
+    const positions=[];const uvs=[];const indices=[];
+    for(let i=0;i<=seg;i++){
+        const lx=-half+i*step;
+        for(let j=0;j<=seg;j++){
+            const lz=-half+j*step;
+            const wx=cx*size+lx;const wz=cz*size+lz;
+            const h=getHeight(wx,wz);
+            positions.push(lx,h,lz);uvs.push(i/seg,j/seg);
         }
-
-        const noise = new SimplexNoise();
-
-        // ============================================================
-        //  场景 / 相机 / 渲染器
-        // ============================================================
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.Fog(0x87ceeb, 35, 130);
-
-        const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 300);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(innerWidth, innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        dirLight.position.set(30, 60, 30);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
-        scene.add(new THREE.AmbientLight(0xffffff, 0.3));
-
-        // ============================================================
-        //  地形参数（降低幅度，增大尺度 → 形成平原）
-        // ============================================================
-        const TERRAIN_CHUNK_SIZE = 80;
-        const SEGMENTS = 64;
-        const HEIGHT_SCALE = 1.8; // 进一步降低起伏
-        const NOISE_SCALE = 0.04; // 更宽阔的起伏
-        const RENDER_RANGE = 2;
-        const UNLOAD_RANGE = 3.2;
-        const WATER_LEVEL = 0; // 水面固定高度
-
-        const chunks = new Map();
-        const clouds = [];
-        let treePositions = [];
-
-        // ============================================================
-        //  地形高度函数
-        // ============================================================
-        function getHeight(wx, wz) {
-            let h = noise.noise(wx * NOISE_SCALE, wz * NOISE_SCALE);
-            h += 0.45 * noise.noise(wx * NOISE_SCALE * 2, wz * NOISE_SCALE * 2);
-            h += 0.22 * noise.noise(wx * NOISE_SCALE * 4, wz * NOISE_SCALE * 4);
-            return h * HEIGHT_SCALE;
+    }
+    for(let i=0;i<seg;i++){
+        for(let j=0;j<seg;j++){
+            const a=i*(seg+1)+j;const b=i*(seg+1)+j+1;
+            const c=(i+1)*(seg+1)+j;const d=(i+1)*(seg+1)+j+1;
+            indices.push(a,b,c);indices.push(b,d,c);
         }
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    geo.setIndex(indices);geo.computeVertexNormals();
+    const mat=new THREE.MeshLambertMaterial({color:0x4a7c40});
+    const mesh=new THREE.Mesh(geo,mat);
+    mesh.position.set(cx*size,0,cz*size);mesh.receiveShadow=true;scene.add(mesh);
 
-        // ============================================================
-        //  构建一棵树
-        // ============================================================
-        function buildTree() {
-            const g = new THREE.Group();
-            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4423 });
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.2, 6), trunkMat);
-            trunk.position.y = 0.6;
-            g.add(trunk);
-            const leafMat = new THREE.MeshLambertMaterial({ color: 0x2d7022 });
-            const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.2, 8), leafMat);
-            leaf.position.y = 1.8;
-            g.add(leaf);
-            return g;
+    const waterGeo=new THREE.PlaneGeometry(size,size);waterGeo.rotateX(-Math.PI/2);
+    const waterMat=new THREE.MeshLambertMaterial({color:0x006994,transparent:true,opacity:0.5,side:THREE.DoubleSide,depthWrite:false});
+    const waterMesh=new THREE.Mesh(waterGeo,waterMat);
+    waterMesh.position.set(cx*size,WATER_LEVEL,cz*size);waterMesh.renderOrder=-1;scene.add(waterMesh);
+
+    const treeList=[];const treeCount=10+Math.floor(Math.random()*6);
+    const baseX=cx*size;const baseZ=cz*size;
+    for(let t=0;t<treeCount;t++){
+        const fracX=(Math.random()-0.5)*0.82;const fracZ=(Math.random()-0.5)*0.82;
+        const lx=fracX*half*2;const lz=fracZ*half*2;
+        const wx=baseX+lx;const wz=baseZ+lz;
+        const ty=getHeight(wx,wz);
+        if(ty>WATER_LEVEL+0.3){
+            const tree=buildTree();
+            tree.position.set(lx,ty,lz);mesh.add(tree);
+            treeList.push(tree);treePositions.push({x:wx,y:ty,z:wz});
         }
+    }
+    const key=`${cx},${cz}`;
+    chunks.set(key,{mesh,waterMesh,trees:treeList});
+    return mesh;
+}
 
-        // ============================================================
-        //  创建地形块（地形网格 + 水平水面）
-        // ============================================================
-        function createChunk(cx, cz) {
-            const size = TERRAIN_CHUNK_SIZE;
-            const seg = SEGMENTS;
-            const half = size / 2;
-            const step = size / seg;
-
-            const positions = [];
-            const uvs = [];
-            const indices = [];
-
-            for (let i = 0; i <= seg; i++) {
-                const lx = -half + i * step;
-                for (let j = 0; j <= seg; j++) {
-                    const lz = -half + j * step;
-                    const wx = cx * size + lx;
-                    const wz = cz * size + lz;
-                    const h = getHeight(wx, wz);
-                    positions.push(lx, h, lz);
-                    uvs.push(i / seg, j / seg);
-                }
-            }
-
-            for (let i = 0; i < seg; i++) {
-                for (let j = 0; j < seg; j++) {
-                    const a = i * (seg + 1) + j;
-                    const b = i * (seg + 1) + j + 1;
-                    const c = (i + 1) * (seg + 1) + j;
-                    const d = (i + 1) * (seg + 1) + j + 1;
-                    indices.push(a, b, c);
-                    indices.push(b, d, c);
-                }
-            }
-
-            // ---- 地形网格 ----
-            const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            geo.setIndex(indices);
-            geo.computeVertexNormals();
-            const mat = new THREE.MeshLambertMaterial({ color: 0x4a7c40, wireframe: false });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(cx * size, 0, cz * size);
-            mesh.receiveShadow = true;
-            scene.add(mesh);
-
-            // ---- 水平水面（固定高度 WATER_LEVEL = 0） ----
-            const waterGeo = new THREE.PlaneGeometry(size, size);
-            waterGeo.rotateX(-Math.PI / 2);
-            const waterMat = new THREE.MeshLambertMaterial({
-                color: 0x006994,
-                transparent: true,
-                opacity: 0.5,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            });
-            const waterMesh = new THREE.Mesh(waterGeo, waterMat);
-            waterMesh.position.set(cx * size, WATER_LEVEL, cz * size);
-            waterMesh.renderOrder = -1;
-            scene.add(waterMesh);
-
-            // ---- 生成树木（只种在高于水面 0.3 的位置） ----
-            const treeList = [];
-            const treeCount = 10 + Math.floor(Math.random() * 6);
-            const baseX = cx * size;
-            const baseZ = cz * size;
-            for (let t = 0; t < treeCount; t++) {
-                const fracX = (Math.random() - 0.5) * 0.82;
-                const fracZ = (Math.random() - 0.5) * 0.82;
-                const lx = fracX * half * 2;
-                const lz = fracZ * half * 2;
-                const wx = baseX + lx;
-                const wz = baseZ + lz;
-                const ty = getHeight(wx, wz);
-                if (ty > WATER_LEVEL + 0.3) {
-                    const tree = buildTree();
-                    tree.position.set(lx, ty, lz);
-                    mesh.add(tree);
-                    treeList.push(tree);
-                    treePositions.push({ x: wx, y: ty, z: wz });
-                }
-            }
-
-            const key = `${cx},${cz}`;
-            chunks.set(key, { mesh, waterMesh, trees: treeList });
-            return mesh;
+function rebuildTreePositions(){
+    treePositions=[];
+    for(const [key,data] of chunks){
+        const [cx,cz]=key.split(',').map(Number);
+        const baseX=cx*TERRAIN_CHUNK_SIZE;const baseZ=cz*TERRAIN_CHUNK_SIZE;
+        for(const child of data.mesh.children){
+            const lx=child.position.x;const lz=child.position.z;const ly=child.position.y;
+            treePositions.push({x:baseX+lx,y:ly,z:lz});
         }
+    }
+}
 
-        // 重建树木位置列表
-        function rebuildTreePositions() {
-            treePositions = [];
-            for (const [key, data] of chunks) {
-                const [cx, cz] = key.split(',').map(Number);
-                const baseX = cx * TERRAIN_CHUNK_SIZE;
-                const baseZ = cz * TERRAIN_CHUNK_SIZE;
-                const children = data.mesh.children;
-                for (const child of children) {
-                    const lx = child.position.x;
-                    const lz = child.position.z;
-                    const ly = child.position.y;
-                    const wx = baseX + lx;
-                    const wz = baseZ + lz;
-                    treePositions.push({ x: wx, y: ly, z: wz });
-                }
-            }
+function updateTerrainAround(px,pz){
+    const chunkX=Math.floor(px/TERRAIN_CHUNK_SIZE);
+    const chunkZ=Math.floor(px/TERRAIN_CHUNK_SIZE);
+    for(let dx=-RENDER_RANGE;dx<=RENDER_RANGE;dx++){
+        for(let dz=-RENDER_RANGE;dz<=RENDER_RANGE;dz++){
+            const key=`${chunkX+dx},${chunkZ+dz}`;
+            if(!chunks.has(key)) createChunk(chunkX+dx,chunkZ+dz);
         }
+    }
+    const toRemove=[];
+    for(const [key,data] of chunks){
+        const [cx,cz]=key.split(',').map(Number);
+        const dist=Math.sqrt((cx-chunkX)**2+(cz-chunkZ)**2);
+        if(dist>UNLOAD_RANGE) toRemove.push(key);
+    }
+    for(const key of toRemove){
+        const data=chunks.get(key);
+        scene.remove(data.mesh);scene.remove(data.waterMesh);
+        data.mesh.geometry.dispose();data.waterMesh.material.dispose();
+        chunks.delete(key);
+    }
+    rebuildTreePositions();
+}
 
-        // ============================================================
-        //  更新地形块
-        // ============================================================
-        function updateTerrainAround(px, pz) {
-            const chunkX = Math.floor(px / TERRAIN_CHUNK_SIZE);
-            const chunkZ = Math.floor(pz / TERRAIN_CHUNK_SIZE);
+//云朵
+function spawnCloud(){
+    const g=new THREE.Group();
+    const mat=new THREE.MeshLambertMaterial({color:0xffffff});
+    for(let i=0;i<6;i++){
+        const s=new THREE.Mesh(new THREE.SphereGeometry(Math.random()*1.8+1,8,6),mat);
+        s.position.set((Math.random()-0.5)*6,(Math.random()-0.5)*2,(Math.random()-0.5)*4);
+        g.add(s);
+    }
+    const range=380;
+    g.position.set((Math.random()-0.5)*range*2,16+Math.random()*14,(Math.random()-0.5)*range*2);
+    scene.add(g);clouds.push(g);return g;
+}
+for(let i=0;i<26;i++) spawnCloud();
 
-            for (let dx = -RENDER_RANGE; dx <= RENDER_RANGE; dx++) {
-                for (let dz = -RENDER_RANGE; dz <= RENDER_RANGE; dz++) {
-                    const key = `${chunkX + dx},${chunkZ + dz}`;
-                    if (!chunks.has(key)) {
-                        createChunk(chunkX + dx, chunkZ + dz);
-                    }
-                }
-            }
+// ========== 飞机系统 & Roblox解体【修复】 ==========
+let planeGroup;
+let planeParts=[];
+let debrisList=[];
 
-            const toRemove = [];
-            for (const [key, data] of chunks) {
-                const [cx, cz] = key.split(',').map(Number);
-                const dist = Math.sqrt((cx - chunkX) ** 2 + (cz - chunkZ) ** 2);
-                if (dist > UNLOAD_RANGE) {
-                    toRemove.push(key);
-                }
-            }
-            for (const key of toRemove) {
-                const data = chunks.get(key);
-                if (!data) continue;
-                scene.remove(data.mesh);
-                scene.remove(data.waterMesh);
-                data.mesh.geometry.dispose();
-                data.mesh.material.dispose();
-                data.waterMesh.geometry.dispose();
-                data.waterMesh.material.dispose();
-                chunks.delete(key);
-            }
+const plane={
+    x:0,y:10,z:0,yaw:0,pitch:0,roll:0,targetRoll:0,
+    speed:0,turnSpeed:0.95,accel:1.2,drag:0.24,
+    maxSpeed:7.2,minSpeed:-2.5,gravity:1.2,gravityThreshold:0.15,crashed:false,smoking:false
+};
 
-            rebuildTreePositions();
-        }
+function buildPlane(){
+    if(planeGroup) scene.remove(planeGroup);
+    planeGroup=new THREE.Group();
+    planeParts=[];
 
-        // ============================================================
-        //  云朵
-        // ============================================================
-        function spawnCloud() {
-            const g = new THREE.Group();
-            const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-            for (let i = 0; i < 6; i++) {
-                const s = new THREE.Mesh(
-                    new THREE.SphereGeometry(Math.random() * 1.8 + 1, 8, 6),
-                    mat
-                );
-                s.position.set((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 4);
-                g.add(s);
-            }
-            const range = 380;
-            g.position.set(
-                (Math.random() - 0.5) * range * 2,
-                16 + Math.random() * 14,
-                (Math.random() - 0.5) * range * 2
-            );
-            scene.add(g);
-            clouds.push(g);
-            return g;
-        }
-        for (let i = 0; i < 26; i++) spawnCloud();
+    const bodyMat=new THREE.MeshLambertMaterial({color:0x2980b9});
+    const wingMat=new THREE.MeshLambertMaterial({color:0x1f618d});
+    const noseMat=new THREE.MeshLambertMaterial({color:0xe74c3c});
 
-        // ============================================================
-        //  飞机模型
-        // ============================================================
-        const planeGroup = new THREE.Group();
-        scene.add(planeGroup);
+    const bodyGeo=new THREE.CylinderGeometry(0.22,0.12,1.6,10);bodyGeo.rotateX(Math.PI/2);
+    const body=new THREE.Mesh(bodyGeo,bodyMat);
+    planeGroup.add(body);planeParts.push(body);
 
-        const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2980b9 });
-        const bodyGeo = new THREE.CylinderGeometry(0.22, 0.12, 1.6, 10);
-        bodyGeo.rotateX(Math.PI / 2);
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        planeGroup.add(body);
+    const wingGeo=new THREE.BoxGeometry(2.6,0.08,0.45);
+    const wing=new THREE.Mesh(wingGeo,wingMat);
+    wing.position.y=0.05;planeGroup.add(wing);planeParts.push(wing);
 
-        const wingMat = new THREE.MeshLambertMaterial({ color: 0x1f618d });
-        const wingGeo = new THREE.BoxGeometry(2.6, 0.08, 0.45);
-        const wing = new THREE.Mesh(wingGeo, wingMat);
-        wing.position.y = 0.05;
-        planeGroup.add(wing);
+    const tailH=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.06,0.28),wingMat);
+    tailH.position.set(0,0.12,-0.75);planeGroup.add(tailH);planeParts.push(tailH);
 
-        const tailH = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 0.28), wingMat);
-        tailH.position.set(0, 0.12, -0.75);
-        planeGroup.add(tailH);
+    const tailV=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.35,0.32),wingMat);
+    tailV.position.set(0,0.22,-0.7);planeGroup.add(tailV);planeParts.push(tailV);
 
-        const tailV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 0.32), wingMat);
-        tailV.position.set(0, 0.22, -0.7);
-        planeGroup.add(tailV);
+    const noseGeo=new THREE.ConeGeometry(0.15,0.35,8);
+    const nose=new THREE.Mesh(noseGeo,noseMat);
+    nose.rotation.x=Math.PI/2;nose.position.z=0.85;
+    planeGroup.add(nose);planeParts.push(nose);
 
-        const noseMat = new THREE.MeshLambertMaterial({ color: 0xe74c3c });
-        const noseGeo = new THREE.ConeGeometry(0.15, 0.35, 8);
-        const nose = new THREE.Mesh(noseGeo, noseMat);
-        nose.rotation.x = Math.PI / 2;
-        nose.position.z = 0.85;
-        planeGroup.add(nose);
+    scene.add(planeGroup);
+}
 
-        // ============================================================
-        //  飞机物理
-        // ============================================================
-        const plane = {
-            x: 0,
-            y: 10,
-            z: 0,
-            yaw: 0,
-            pitch: 0,
-            roll: 0,
-            targetRoll: 0,
-            speed: 0,
-            turnSpeed: 0.95,
-            accel: 1.2,
-            drag: 0.24,
-            maxSpeed: 7.2,
-            minSpeed: -2.5,
-        };
-        planeGroup.position.set(plane.x, plane.y, plane.z);
+// 【修复版】Roblox解体
+function spawnDebrisRobloxStyle(){
+    planeGroup.visible = false;
+    // 关键修复：使用worldMatrix正确获取部件世界坐标
+    planeGroup.updateWorldMatrix(true,true);
 
-        // ============================================================
-        //  键盘
-        // ============================================================
-        const key = {};
-        document.addEventListener('keydown', e => key[e.key.toLowerCase()] = true);
-        document.addEventListener('keyup', e => key[e.key.toLowerCase()] = false);
+    for(const mesh of planeParts){
+        mesh.updateWorldMatrix(true,true);
+        const worldPos = new THREE.Vector3();
+        const worldRot = new THREE.Quaternion();
+        mesh.getWorldPosition(worldPos);
+        mesh.getWorldQuaternion(worldRot);
 
-        // ============================================================
-        //  鼠标视角控制
-        // ============================================================
-        const mouse = {
-            isDown: false,
-            phi: 0.35,
-            theta: 0,
-            distance: 7.5,
-            minDist: 4,
-            maxDist: 14,
-            sens: 0.0035,
-        };
+        const pieceMesh = new THREE.Mesh(mesh.geometry.clone(),mesh.material.clone());
+        pieceMesh.position.copy(worldPos);
+        pieceMesh.quaternion.copy(worldRot);
 
-        document.addEventListener('mousedown', ev => { if (ev.button === 0) mouse.isDown = true; });
-        document.addEventListener('mouseup', ev => { if (ev.button === 0) mouse.isDown = false; });
-        document.addEventListener('mousemove', ev => {
-            if (!mouse.isDown) return;
-            mouse.theta -= ev.movementX * mouse.sens;
-            mouse.phi += ev.movementY * mouse.sens;
-            mouse.phi = THREE.MathUtils.clamp(mouse.phi, 0.1, Math.PI / 2 - 0.05);
+        // 碎片向外扩散速度（加大数值更容易看见）
+        const velocity=new THREE.Vector3(
+            (Math.random()-0.5)*3.5,
+            (Math.random()-0.5)*3.5,
+            (Math.random()-0.5)*3.5
+        );
+        const rotSpeed=new THREE.Vector3(
+            (Math.random()-0.5)*5,
+            (Math.random()-0.5)*5,
+            (Math.random()-0.5)*5
+        );
+
+        debrisList.push({
+            mesh:pieceMesh,
+            vel:velocity,
+            rotSpd:rotSpeed
         });
-        document.addEventListener('wheel', ev => {
-            mouse.distance += ev.deltaY * 0.008;
-            mouse.distance = THREE.MathUtils.clamp(mouse.distance, mouse.minDist, mouse.maxDist);
-        });
+        scene.add(pieceMesh);
+    }
+}
 
-        window.onresize = () => {
-            camera.aspect = innerWidth / innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(innerWidth, innerHeight);
-        };
+function clearDebris(){
+    for(const d of debrisList){
+        scene.remove(d.mesh);
+        d.mesh.geometry.dispose();
+        d.mesh.material.dispose();
+    }
+    debrisList=[];
+}
 
-        // ============================================================
-        //  树木碰撞
-        // ============================================================
-        const TREE_COLLISION_RADIUS = 1.5;
+function resetPlane(){
+    clearDebris();
+    plane.x=0;plane.y=10;plane.z=0;
+    plane.yaw=0;plane.pitch=0;plane.roll=0;plane.targetRoll=0;
+    plane.speed=0;plane.crashed=false;
+    buildPlane();
+    planeGroup.position.set(plane.x,plane.y,plane.z);
+    planeGroup.rotation.set(0,0,0);
+    planeGroup.visible=true;
+    plane.smoking = false;
+    for(const p of smokeParticles){
+        scene.remove(p);
+        p.geometry.dispose();
+        p.material.dispose();
+    }
+    smokeParticles.length = 0;
+}
 
-        function handleTreeCollision() {
-            const pos = new THREE.Vector3(plane.x, plane.y, plane.z);
-            for (const tree of treePositions) {
-                const treePos = new THREE.Vector3(tree.x, tree.y, tree.z);
-                const diff = pos.clone().sub(treePos);
-                const dist = diff.length();
-                if (dist < TREE_COLLISION_RADIUS && dist > 0.001) {
-                    const dir = diff.clone().normalize();
-                    const pushDist = TREE_COLLISION_RADIUS - dist + 0.05;
-                    plane.x += dir.x * pushDist;
-                    plane.y += dir.y * pushDist * 0.5;
-                    plane.z += dir.z * pushDist;
-                    plane.speed *= 0.5;
-                    pos.set(plane.x, plane.y, plane.z);
+//键盘
+const key={};
+document.addEventListener('keydown',e=>{
+    key[e.key.toLowerCase()]=true;
+    if(e.key.toLowerCase()==='r') resetPlane();
+});
+document.addEventListener('keyup',e=>key[e.key.toLowerCase()]=false);
+
+//鼠标视角
+const mouse={isDown:false,phi:0.35,theta:0,distance:7.5,minDist:4,maxDist:14,sens:0.0035};
+document.addEventListener('mousedown',ev=>{if(ev.button===0)mouse.isDown=true;});
+document.addEventListener('mouseup',ev=>{if(ev.button===0)mouse.isDown=false;});
+document.addEventListener('mousemove',ev=>{
+    if(!mouse.isDown)return;
+    mouse.theta-=ev.movementX*mouse.sens;
+    mouse.phi+=ev.movementY*mouse.sens;
+    mouse.phi=THREE.MathUtils.clamp(mouse.phi,0.1,Math.PI/2-0.05);
+});
+document.addEventListener('wheel',ev=>{
+    mouse.distance+=ev.deltaY*0.008;
+    mouse.distance=THREE.MathUtils.clamp(mouse.distance,mouse.minDist,mouse.maxDist);
+});
+window.onresize=()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);};
+
+//树木碰撞
+const TREE_COLLISION_RADIUS=1.5;
+function handleTreeCollision(){
+    const pos=new THREE.Vector3(plane.x,plane.y,plane.z);
+    for(const tree of treePositions){
+        const treePos=new THREE.Vector3(tree.x,tree.y,tree.z);
+        const diff=pos.clone().sub(treePos);
+        const dist=diff.length();
+        if(dist<TREE_COLLISION_RADIUS&&dist>0.001){
+            const dir=diff.clone().normalize();
+            const pushDist=TREE_COLLISION_RADIUS-dist+0.05;
+            plane.x+=dir.x*pushDist;
+            plane.y+=dir.y*pushDist*0.5;
+            plane.z+=dir.z*pushDist;
+            plane.speed*=0.5;
+            if(!plane.crashed&&Math.abs(plane.speed)>=0){
+                plane.crashed=true;
+                spawnDebrisRobloxStyle();
+            }
+        }
+    }
+}
+
+let prevTime=performance.now();
+let frameCount=0;let fpsTimer=performance.now();
+const fpsDom=document.getElementById('fps');
+
+function loop(){
+    requestAnimationFrame(loop);
+    const now=performance.now();
+    let dt=(now-prevTime)/1000;prevTime=now;
+    dt=Math.min(0.035,dt);
+
+    frameCount++;
+    if(now-fpsTimer>=1000){fpsDom.innerText='FPS: '+frameCount;frameCount=0;fpsTimer=now;}
+
+    //更新碎片：重力 + 地形碰撞
+    for(const d of debrisList){
+        d.vel.y -= 2.8 * dt;
+        d.mesh.position.add(d.vel.clone().multiplyScalar(dt));
+
+        //地形碰撞检测
+        const groundY = getHeight(d.mesh.position.x, d.mesh.position.z);
+        const groundLevel = Math.max(groundY, WATER_LEVEL);
+        if(d.mesh.position.y < groundLevel) {
+            d.mesh.position.y = groundLevel;
+            d.vel.y *= -0.25; //微弱反弹，改成0就是完全不弹
+            d.vel.x *= 0.72;
+            d.vel.z *= 0.72;
+            d.rotSpd.multiplyScalar(0.85);
+        }
+
+        d.mesh.rotation.x += d.rotSpd.x * dt;
+        d.mesh.rotation.y += d.rotSpd.y * dt;
+        d.mesh.rotation.z += d.rotSpd.z * dt;
+    }
+
+    if(plane.crashed){
+        plane.speed=0;
+        plane.targetRoll=0;
+    }else{
+        if(key['a']){plane.yaw+=plane.turnSpeed*dt;plane.targetRoll=0.38;}
+        else if(key['d']){plane.yaw-=plane.turnSpeed*dt;plane.targetRoll=-0.38;}
+        else plane.targetRoll*=0.92;
+
+        if(key['q']) plane.pitch+=plane.turnSpeed*dt;
+        if(key['e']) plane.pitch-=plane.turnSpeed*dt;
+        plane.pitch=THREE.MathUtils.clamp(plane.pitch,-1.4,1.4);
+        plane.roll+=(plane.targetRoll-plane.roll)*0.09;
+
+        if(key['w']) plane.speed+=plane.accel*dt;
+        if(key['s']) plane.speed-=plane.accel*dt;
+        plane.speed*=(1-plane.drag*dt);
+        plane.speed=THREE.MathUtils.clamp(plane.speed,plane.minSpeed,plane.maxSpeed);
+
+        const forward=new THREE.Vector3(0,0,1);
+        const euler=new THREE.Euler(plane.pitch,plane.yaw,plane.roll,'YXZ');
+        const quat=new THREE.Quaternion().setFromEuler(euler);
+        forward.applyQuaternion(quat);
+        plane.x+=forward.x*plane.speed*dt;
+        plane.z+=forward.z*plane.speed*dt;
+        plane.y+=forward.y*plane.speed*dt;
+
+        // ========== 失速判定 ==========
+        const stallAngle = 1.15; //俯仰大于该值进入失速
+        const isStall = plane.pitch > stallAngle;
+        if(isStall){
+            plane.y -= 2.6 * dt; //失速下坠力
+            plane.turnSpeed = 0.45; //失速操控灵敏度下降
+        }else{
+            plane.turnSpeed = 0.95; //恢复正常操控
+        }
+
+        //闲置下坠逻辑
+        const noThrottle=!key['w']&&!key['s'];
+        const noPitchUp=!key['q'];
+        const lowSpeed=Math.abs(plane.speed)<plane.gravityThreshold;
+        if(noThrottle&&noPitchUp){
+            plane.y-=plane.gravity*dt;
+        }
+
+        //更新速度UI
+        speedDom.textContent = Math.abs(plane.speed).toFixed(2);
+
+        handleTreeCollision();
+
+        const groundH=getHeight(plane.x,plane.z);
+        const minSafe=Math.max(groundH,WATER_LEVEL)+0.45;
+        if(plane.y<minSafe){
+            plane.y=minSafe;
+
+            //撞击水面判定
+            if(!plane.crashed && groundH <= WATER_LEVEL)
+            {
+                if(Math.abs(plane.speed) > 2){
+                    //高速入水：直接解体生成碎片，不冒烟
+                    plane.crashed=true;
+                    spawnDebrisRobloxStyle();
+                }else{
+                    //低速入水：标记坠毁锁操控 + 开启冒烟
+                    plane.crashed = true;
+                    plane.smoking = true;
                 }
             }
         }
 
-        // ============================================================
-        //  主循环
-        // ============================================================
-        let prevTime = performance.now();
-        let frameCount = 0;
-        let fpsTimer = performance.now();
-        const fpsDom = document.getElementById('fps');
+        planeGroup.position.set(plane.x,plane.y,plane.z);
+        planeGroup.rotation.order='YXZ';
+        planeGroup.rotation.y=plane.yaw;
+        planeGroup.rotation.x=plane.pitch;
+        planeGroup.rotation.z=plane.roll;
+    }
 
-        function loop() {
-            requestAnimationFrame(loop);
+    updateTerrainAround(plane.x,plane.z);
 
-            const now = performance.now();
-            let dt = (now - prevTime) / 1000;
-            prevTime = now;
-            dt = Math.min(0.035, dt);
-
-            frameCount++;
-            if (now - fpsTimer >= 1000) {
-                fpsDom.innerText = 'FPS: ' + frameCount;
-                frameCount = 0;
-                fpsTimer = now;
-            }
-
-            // ---- 操控 ----
-            if (key['a']) {
-                plane.yaw += plane.turnSpeed * dt;
-                plane.targetRoll = 0.38;
-            } else if (key['d']) {
-                plane.yaw -= plane.turnSpeed * dt;
-                plane.targetRoll = -0.38;
-            } else {
-                plane.targetRoll *= 0.92;
-            }
-            if (key['q']) plane.pitch += plane.turnSpeed * dt;
-            if (key['e']) plane.pitch -= plane.turnSpeed * dt;
-            plane.pitch = THREE.MathUtils.clamp(plane.pitch, -1.4, 1.4);
-            plane.roll += (plane.targetRoll - plane.roll) * 0.09;
-
-            if (key['w']) plane.speed += plane.accel * dt;
-            if (key['s']) plane.speed -= plane.accel * dt;
-            plane.speed *= (1 - plane.drag * dt);
-            plane.speed = THREE.MathUtils.clamp(plane.speed, plane.minSpeed, plane.maxSpeed);
-
-            // ---- 前进方向 ----
-            const forward = new THREE.Vector3(0, 0, 1);
-            const euler = new THREE.Euler(plane.pitch, plane.yaw, plane.roll, 'YXZ');
-            const quat = new THREE.Quaternion().setFromEuler(euler);
-            forward.applyQuaternion(quat);
-
-            plane.x += forward.x * plane.speed * dt;
-            plane.y += forward.y * plane.speed * dt;
-            plane.z += forward.z * plane.speed * dt;
-
-            // ---- 树木碰撞 ----
-            handleTreeCollision();
-
-            // ---- 地面碰撞（不能低于水面高度） ----
-            const groundH = getHeight(plane.x, plane.z);
-            const minSafe = Math.max(groundH, WATER_LEVEL) + 0.45;
-            if (plane.y < minSafe) {
-                plane.y = minSafe;
-                if (plane.speed > 0.5) {
-                    plane.speed *= 0.5;
-                    plane.pitch += 0.15;
-                    plane.pitch = Math.min(plane.pitch, 1.2);
-                } else {
-                    plane.speed = 0;
-                }
-            }
-
-            // ---- 更新飞机变换 ----
-            planeGroup.position.set(plane.x, plane.y, plane.z);
-            planeGroup.rotation.order = 'YXZ';
-            planeGroup.rotation.y = plane.yaw;
-            planeGroup.rotation.x = plane.pitch;
-            planeGroup.rotation.z = plane.roll;
-
-            // ---- 更新地形 ----
-            updateTerrainAround(plane.x, plane.z);
-
-            // ---- 云朵移动 ----
-            const CLOUD_RANGE = 380;
-            for (const cloud of clouds) {
-                cloud.position.x += dt * 0.6;
-                if (cloud.position.x > CLOUD_RANGE) {
-                    cloud.position.x = -CLOUD_RANGE;
-                    cloud.position.z = (Math.random() - 0.5) * CLOUD_RANGE * 2;
-                    cloud.position.y = 16 + Math.random() * 14;
-                }
-            }
-
-            // ---- 相机跟随 ----
-            const localOffset = new THREE.Vector3(
-                Math.sin(mouse.theta) * Math.sin(mouse.phi),
-                Math.cos(mouse.phi),
-                Math.cos(mouse.theta) * Math.sin(mouse.phi)
-            );
-            localOffset.multiplyScalar(mouse.distance);
-
-            const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), plane.yaw);
-            localOffset.applyQuaternion(yawQuat);
-
-            camera.position.copy(planeGroup.position).add(localOffset);
-            camera.lookAt(planeGroup.position);
-
-            renderer.render(scene, camera);
+    const CLOUD_RANGE=380;
+    for(const cloud of clouds){
+        cloud.position.x+=dt*0.6;
+        if(cloud.position.x>CLOUD_RANGE){
+            cloud.position.x=-CLOUD_RANGE;
+            cloud.position.z=(Math.random()-0.5)*CLOUD_RANGE*2;
+            cloud.position.y=16+Math.random()*14;
         }
+    }
 
-        // ---- 启动 ----
-        rebuildTreePositions();
-        loop();
-    </script>
+    const localOffset=new THREE.Vector3(
+        Math.sin(mouse.theta)*Math.sin(mouse.phi),
+        Math.cos(mouse.phi),
+        Math.cos(mouse.theta)*Math.sin(mouse.phi)
+    );
+    localOffset.multiplyScalar(mouse.distance);
+    const yawQuat=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),plane.yaw);
+    localOffset.applyQuaternion(yawQuat);
+    camera.position.copy(planeGroup.position).add(localOffset);
+    camera.lookAt(planeGroup.position);
+    // 烟雾更新逻辑
+    smokeSpawnTimer += dt;
+    // 持续生成烟雾（飞机落水冒烟激活时）
+    if(plane.smoking && smokeSpawnTimer > 1/SMOKE_SPAWN_RATE){
+        smokeSpawnTimer = 0;
+        const smokePos = new THREE.Vector3(plane.x, plane.y+0.4, plane.z);
+        createSmoke(smokePos);
+    }
+
+    // 更新所有烟雾粒子
+    for(let i = smokeParticles.length -1; i >=0; i--){
+        const p = smokeParticles[i];
+        p.userData.life += dt;
+        p.position.add(p.userData.vel.clone().multiplyScalar(dt));
+
+        // 随时间放大+变淡
+        const progress = p.userData.life / p.userData.maxLife;
+        p.scale.setScalar(1 + progress * 1.8);
+        p.material.opacity = 0.6 * (1-progress);
+
+        // 生命周期结束删除粒子
+        if(p.userData.life >= p.userData.maxLife){
+            scene.remove(p);
+            p.geometry.dispose();
+            p.material.dispose();
+            smokeParticles.splice(i,1);
+        }
+    }
+
+    renderer.render(scene,camera);
+}
+
+buildPlane();
+rebuildTreePositions();
+loop();
+</script>
 </body>
 </html>
