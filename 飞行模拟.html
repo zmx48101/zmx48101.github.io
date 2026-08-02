@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>3D飞机｜修复版 鼠标视角+正常飞行</title>
+    <title>3D飞机</title>
     <style>
         * {
             margin: 0;
@@ -613,7 +613,7 @@ function loop(){
         const stallAngle = 1.15;
         const isStall = plane.pitch > stallAngle;
         if(isStall){
-            plane.y -= 2.6 * dt;
+            plane.y -= 2 * dt;
             plane.turnSpeed = 0.45;
         }else{
             plane.turnSpeed = 0.95;
