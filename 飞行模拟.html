@@ -2,29 +2,95 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>3D飞机</title>
+    <title>3D飞机｜修复版 鼠标视角+正常飞行</title>
     <style>
-        * {margin: 0;padding: 0;}
-        canvas {display: block;}
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        canvas {
+            display: block;
+        }
         #ui {
-            position: absolute;top:12px;left:12px;
-            background:rgba(0,0,0,0.55);color:#fff;
-            padding:10px 14px;font-family:system-ui;border-radius:6px;font-size:14px;
-            user-select:none;pointer-events:none;
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            padding: 10px 14px;
+            font-family: system-ui;
+            border-radius: 6px;
+            font-size: 14px;
+            user-select: none;
+            pointer-events: none;
+            display:none;
         }
         #fps {
             position:absolute;top:12px;right:12px;
             background:rgba(0,0,0,0.55);color:#fff;
             padding:6px 10px;border-radius:6px;font-family:monospace;
             user-select:none;pointer-events:none;
+            display:none;
+        }
+        #startScreen{
+            position:fixed;
+            inset:0;
+            background:rgba(20,40,70,0.85);
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            z-index:999;
+        }
+        #startScreen h1{
+            color:#fff;
+            font-size:42px;
+            margin-bottom:24px;
+            font-family:system-ui;
+        }
+        #startScreen .tip{
+            color:#ddd;
+            font-size:16px;
+            margin-bottom:36px;
+            line-height:1.8;
+            text-align:center;
+        }
+        #startBtn{
+            padding:14px 36px;
+            font-size:20px;
+            border:none;
+            border-radius:8px;
+            background:#2980b9;
+            color:white;
+            cursor:pointer;
+            transition:0.2s;
+        }
+        #startBtn:hover{
+            background:#3498db;
+            transform:scale(1.05);
         }
     </style>
 </head>
 <body>
+<!-- 开始界面 -->
+<div id="startScreen">
+    <h1>3D飞机飞行模拟器</h1>
+    <div class="tip">
+        W 加速｜S 减速<br>
+        A/D 转向｜Q/E 抬头/低头<br>
+        鼠标左键拖拽视角｜滚轮缩放<br>
+        空格键 开火<br>
+        R 重置飞机<br>
+        撞击树木、陆地、水面会产生不同坠毁效果
+    </div>
+    <button id="startBtn">开始游戏</button>
+</div>
+
 <div id="ui">
     W 加速｜S 减速<br>
     A/D 转向｜Q/E 抬头/低头<br>
     鼠标左键拖拽视角｜滚轮缩放<br>
+    空格键 开火<br>
     R 重置飞机<br>
     速度：<span id="speedText">0.00</span>
 </div>
@@ -77,7 +143,7 @@ dirLight.position.set(30,60,30);dirLight.castShadow=true;
 scene.add(dirLight);scene.add(new THREE.AmbientLight(0xffffff,0.3));
 // 烟雾粒子系统
 const smokeParticles = [];
-const SMOKE_SPAWN_RATE = 8; // 每帧生成烟雾数量
+const SMOKE_SPAWN_RATE = 8;
 let smokeSpawnTimer = 0;
 
 function createSmoke(pos) {
@@ -189,7 +255,7 @@ function rebuildTreePositions(){
 
 function updateTerrainAround(px,pz){
     const chunkX=Math.floor(px/TERRAIN_CHUNK_SIZE);
-    const chunkZ=Math.floor(px/TERRAIN_CHUNK_SIZE);
+    const chunkZ=Math.floor(pz/TERRAIN_CHUNK_SIZE);
     for(let dx=-RENDER_RANGE;dx<=RENDER_RANGE;dx++){
         for(let dz=-RENDER_RANGE;dz<=RENDER_RANGE;dz++){
             const key=`${chunkX+dx},${chunkZ+dz}`;
@@ -226,7 +292,7 @@ function spawnCloud(){
 }
 for(let i=0;i<26;i++) spawnCloud();
 
-// ========== 飞机系统 & Roblox解体【修复】 ==========
+// ========== 飞机系统 & Roblox解体 ==========
 let planeGroup;
 let planeParts=[];
 let debrisList=[];
@@ -266,12 +332,13 @@ function buildPlane(){
     planeGroup.add(nose);planeParts.push(nose);
 
     scene.add(planeGroup);
+    // 开始界面预览位置
+    planeGroup.position.set(0, 8, 0);
 }
 
-// 【修复版】Roblox解体
+// Roblox解体
 function spawnDebrisRobloxStyle(){
     planeGroup.visible = false;
-    // 关键修复：使用worldMatrix正确获取部件世界坐标
     planeGroup.updateWorldMatrix(true,true);
 
     for(const mesh of planeParts){
@@ -285,7 +352,6 @@ function spawnDebrisRobloxStyle(){
         pieceMesh.position.copy(worldPos);
         pieceMesh.quaternion.copy(worldRot);
 
-        // 碎片向外扩散速度（加大数值更容易看见）
         const velocity=new THREE.Vector3(
             (Math.random()-0.5)*3.5,
             (Math.random()-0.5)*3.5,
@@ -331,6 +397,86 @@ function resetPlane(){
         p.material.dispose();
     }
     smokeParticles.length = 0;
+
+    // 清空子弹
+    for(const b of bulletList){
+        scene.remove(b.mesh);
+        b.mesh.geometry.dispose();
+        b.mesh.material.dispose();
+    }
+    bulletList.length = 0;
+}
+
+// ========== 开火系统 ==========
+const bulletList = [];
+const BULLET_SPEED = 18;
+const BULLET_GRAVITY = 0.12;
+const BULLET_LIFETIME = 3;
+const FIRE_COOLDOWN = 0.12;
+let fireTimer = 0;
+
+function fireBullet(){
+    if(plane.crashed) return;
+    if(fireTimer < FIRE_COOLDOWN) return;
+    fireTimer = 0;
+
+    const euler = new THREE.Euler(plane.pitch, plane.yaw, plane.roll, 'YXZ');
+    const quat = new THREE.Quaternion().setFromEuler(euler);
+
+    const forward = new THREE.Vector3(0, 0, 1);
+    forward.applyQuaternion(quat);
+
+    const bulletPos = new THREE.Vector3(plane.x, plane.y + 0.15, plane.z);
+    bulletPos.add(forward.clone().multiplyScalar(1.3));
+
+    const bulletGeo = new THREE.SphereGeometry(0.08, 8, 6);
+    const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+    const bulletMesh = new THREE.Mesh(bulletGeo, bulletMat);
+    bulletMesh.position.copy(bulletPos);
+    scene.add(bulletMesh);
+
+    bulletList.push({
+        mesh: bulletMesh,
+        vel: forward.clone().multiplyScalar(BULLET_SPEED),
+        life: 0
+    });
+}
+
+function updateBullets(dt){
+    for(let i = bulletList.length - 1; i >= 0; i--){
+        const b = bulletList[i];
+
+        b.vel.y -= BULLET_GRAVITY * dt;
+        b.mesh.position.add(b.vel.clone().multiplyScalar(dt));
+        b.life += dt;
+
+        const pos = b.mesh.position;
+        const groundY = getHeight(pos.x, pos.z);
+        const groundLevel = Math.max(groundY, WATER_LEVEL);
+
+        let hit = false;
+
+        // 碰到地形/水面
+        if(pos.y < groundLevel){
+            hit = true;
+        }
+
+        // 碰到树木
+        for(const tree of treePositions){
+            const treePos = new THREE.Vector3(tree.x, tree.y, tree.z);
+            if(pos.distanceTo(treePos) < 1.2){
+                hit = true;
+                break;
+            }
+        }
+
+        if(b.life > BULLET_LIFETIME || hit){
+            scene.remove(b.mesh);
+            b.mesh.geometry.dispose();
+            b.mesh.material.dispose();
+            bulletList.splice(i, 1);
+        }
+    }
 }
 
 //键盘
@@ -338,12 +484,21 @@ const key={};
 document.addEventListener('keydown',e=>{
     key[e.key.toLowerCase()]=true;
     if(e.key.toLowerCase()==='r') resetPlane();
+    // ===== 仅保留空格键开火，移除鼠标左键开火 =====
+    if(e.key.toLowerCase()===' ' && gameStart){
+        fireBullet();
+    }
 });
 document.addEventListener('keyup',e=>key[e.key.toLowerCase()]=false);
 
 //鼠标视角
 const mouse={isDown:false,phi:0.35,theta:0,distance:7.5,minDist:4,maxDist:14,sens:0.0035};
-document.addEventListener('mousedown',ev=>{if(ev.button===0)mouse.isDown=true;});
+document.addEventListener('mousedown',ev=>{
+    if(ev.button===0){
+        mouse.isDown=true;
+        // 【重点】删除鼠标左键开火代码！
+    }
+});
 document.addEventListener('mouseup',ev=>{if(ev.button===0)mouse.isDown=false;});
 document.addEventListener('mousemove',ev=>{
     if(!mouse.isDown)return;
@@ -372,7 +527,7 @@ function handleTreeCollision(){
             plane.y+=dir.y*pushDist*0.5;
             plane.z+=dir.z*pushDist;
             plane.speed*=0.5;
-            if(!plane.crashed&&Math.abs(plane.speed)>=0){
+            if(!plane.crashed){
                 plane.crashed=true;
                 spawnDebrisRobloxStyle();
             }
@@ -383,6 +538,7 @@ function handleTreeCollision(){
 let prevTime=performance.now();
 let frameCount=0;let fpsTimer=performance.now();
 const fpsDom=document.getElementById('fps');
+let gameStart = false;
 
 function loop(){
     requestAnimationFrame(loop);
@@ -390,20 +546,33 @@ function loop(){
     let dt=(now-prevTime)/1000;prevTime=now;
     dt=Math.min(0.035,dt);
 
+    fireTimer += dt;
+
+    // 未开始游戏：飞机自动旋转展示
+    if(!gameStart){
+        planeGroup.rotation.y += dt * 0.45; //0.45=旋转速度，调大转更快
+        // 固定预览相机位置，对准飞机
+        camera.position.set(0, 12, 0);
+        camera.lookAt(0, 5, 0);
+        renderer.render(scene,camera);
+        return;
+    }
+
     frameCount++;
     if(now-fpsTimer>=1000){fpsDom.innerText='FPS: '+frameCount;frameCount=0;fpsTimer=now;}
+
+    updateBullets(dt);
 
     //更新碎片：重力 + 地形碰撞
     for(const d of debrisList){
         d.vel.y -= 2.8 * dt;
         d.mesh.position.add(d.vel.clone().multiplyScalar(dt));
 
-        //地形碰撞检测
         const groundY = getHeight(d.mesh.position.x, d.mesh.position.z);
         const groundLevel = Math.max(groundY, WATER_LEVEL);
         if(d.mesh.position.y < groundLevel) {
             d.mesh.position.y = groundLevel;
-            d.vel.y *= -0.25; //微弱反弹，改成0就是完全不弹
+            d.vel.y *= -0.25;
             d.vel.x *= 0.72;
             d.vel.z *= 0.72;
             d.rotSpd.multiplyScalar(0.85);
@@ -441,16 +610,15 @@ function loop(){
         plane.y+=forward.y*plane.speed*dt;
 
         // ========== 失速判定 ==========
-        const stallAngle = 1.15; //俯仰大于该值进入失速
+        const stallAngle = 1.15;
         const isStall = plane.pitch > stallAngle;
         if(isStall){
-            plane.y -= 2.6 * dt; //失速下坠力
-            plane.turnSpeed = 0.45; //失速操控灵敏度下降
+            plane.y -= 2.6 * dt;
+            plane.turnSpeed = 0.45;
         }else{
-            plane.turnSpeed = 0.95; //恢复正常操控
+            plane.turnSpeed = 0.95;
         }
 
-        //闲置下坠逻辑
         const noThrottle=!key['w']&&!key['s'];
         const noPitchUp=!key['q'];
         const lowSpeed=Math.abs(plane.speed)<plane.gravityThreshold;
@@ -458,7 +626,6 @@ function loop(){
             plane.y-=plane.gravity*dt;
         }
 
-        //更新速度UI
         speedDom.textContent = Math.abs(plane.speed).toFixed(2);
 
         handleTreeCollision();
@@ -481,7 +648,7 @@ function loop(){
                         plane.smoking = true;
                     }
                 }else{
-                    if(Math.abs(plane.speed) >=0){
+                    if(Math.abs(plane.speed) >1.5){
                         plane.crashed=true;
                         spawnDebrisRobloxStyle();
                     }
@@ -518,27 +685,23 @@ function loop(){
     localOffset.applyQuaternion(yawQuat);
     camera.position.copy(planeGroup.position).add(localOffset);
     camera.lookAt(planeGroup.position);
-    // 烟雾更新逻辑
+
     smokeSpawnTimer += dt;
-    // 持续生成烟雾（飞机落水冒烟激活时）
     if(plane.smoking && smokeSpawnTimer > 1/SMOKE_SPAWN_RATE){
         smokeSpawnTimer = 0;
         const smokePos = new THREE.Vector3(plane.x, plane.y+0.4, plane.z);
         createSmoke(smokePos);
     }
 
-    // 更新所有烟雾粒子
     for(let i = smokeParticles.length -1; i >=0; i--){
         const p = smokeParticles[i];
         p.userData.life += dt;
         p.position.add(p.userData.vel.clone().multiplyScalar(dt));
 
-        // 随时间放大+变淡
         const progress = p.userData.life / p.userData.maxLife;
         p.scale.setScalar(1 + progress * 1.8);
         p.material.opacity = 0.6 * (1-progress);
 
-        // 生命周期结束删除粒子
         if(p.userData.life >= p.userData.maxLife){
             scene.remove(p);
             p.geometry.dispose();
@@ -548,6 +711,14 @@ function loop(){
     }
 
     renderer.render(scene,camera);
+}
+
+// 开始按钮事件
+document.getElementById('startBtn').onclick = function(){
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('ui').style.display = 'block';
+    document.getElementById('fps').style.display = 'block';
+    gameStart = true;
 }
 
 buildPlane();
